@@ -50,6 +50,7 @@ frontend/.vite/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+.claude/
 *.log
 
 # ─────────────────────────────────────────────────────────────
