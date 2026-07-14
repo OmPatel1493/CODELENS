@@ -12,16 +12,16 @@ clean REST API and a modern React interface.
 
 ## Features
 
-- 🔎 **Semantic code search** — natural-language queries over a repository, ranked
+- **Semantic code search** — natural-language queries over a repository, ranked
   by meaning rather than keywords, with syntax-highlighted snippets and confidence
   scores.
-- 🐞 **Bug localization** — paste a stack trace or error log and get the most
+- **Bug localization** — paste a stack trace or error log and get the most
   likely source files, ranked and explained.
-- 🧩 **Structural indexing** — files, directories, classes, functions, and imports
+- **Structural indexing** — files, directories, classes, functions, and imports
   extracted via tree-sitter for precise, language-aware chunking.
-- 📊 **Repository insight** — statistics and an explorer for navigating an indexed
+- **Repository insight** — statistics and an explorer for navigating an indexed
   codebase.
-- 🔐 **Authenticated, multi-repo** — JWT auth with per-user repositories.
+- **Authenticated, multi-repo** — JWT auth with per-user repositories.
 
 ## Tech stack
 
