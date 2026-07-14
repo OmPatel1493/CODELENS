@@ -1,19 +1,17 @@
-"""Smoke test for the health endpoint.
-
-Uses FastAPI's TestClient (backed by httpx) which exercises the full app —
-routing, middleware, serialization — without running a real server.
-"""
+"""Health endpoint tests. The `client` fixture (conftest) uses an in-memory DB."""
 
 from fastapi.testclient import TestClient
 
-from app.main import create_app
 
-client = TestClient(create_app())
-
-
-def test_health_returns_ok():
+def test_health_returns_ok(client: TestClient):
     response = client.get("/api/health")
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
     assert body["app"] == "CodeLens API"
+
+
+def test_health_db_reachable(client: TestClient):
+    response = client.get("/api/health/db")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "database": "reachable"}

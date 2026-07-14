@@ -1,15 +1,23 @@
-"""Health check endpoint.
+"""Health check endpoints.
 
-A trivial route that proves the service is up. Deployment platforms (Render,
-Docker healthchecks, load balancers) poll an endpoint like this to decide
-whether an instance is ready to receive traffic.
+`/health` proves the service is up. `/health/db` additionally runs a trivial query
+to prove the database is reachable — useful for deploy readiness probes, since an
+app can be "up" while its database is unreachable.
 """
 
-from fastapi import APIRouter
+from typing import Annotated
+
+from fastapi import APIRouter, Depends
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.database import get_db
 
 router = APIRouter(tags=["health"])
+
+# Reusable typed dependency — the current FastAPI idiom (avoids a call in defaults).
+DbSession = Annotated[Session, Depends(get_db)]
 
 
 @router.get("/health")
@@ -19,3 +27,9 @@ def health() -> dict[str, str]:
         "app": settings.APP_NAME,
         "environment": settings.ENVIRONMENT,
     }
+
+
+@router.get("/health/db")
+def health_db(db: DbSession) -> dict[str, str]:
+    db.execute(text("SELECT 1"))
+    return {"status": "ok", "database": "reachable"}
