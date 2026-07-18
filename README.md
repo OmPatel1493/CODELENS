@@ -25,34 +25,49 @@ clean REST API and a modern React interface.
 
 ## Tech stack
 
-| Layer          | Choice                                                       |
-| -------------- | ------------------------------------------------------------ |
-| Backend        | Python 3.12, FastAPI, SQLAlchemy, JWT                        |
-| ML / Search    | sentence-transformers, FAISS, tree-sitter                   |
-| Database       | PostgreSQL (SQLite for local development)                   |
-| Frontend       | React, TypeScript, Vite, Tailwind CSS, shadcn/ui            |
-| Infrastructure | Docker, GitHub Actions, Vercel (web), Render (API)          |
+| Layer          | Choice                                                              |
+| -------------- | ------------------------------------------------------------------- |
+| Backend        | Python 3.12, FastAPI, SQLAlchemy, JWT                               |
+| ML / Search    | sentence-transformers, ChromaDB (embedded), tree-sitter            |
+| Database       | Azure Database for PostgreSQL (SQLite for local development)        |
+| Object storage | AWS S3 — repository archives, logs, reports, exported indexes      |
+| Frontend       | React, TypeScript, Vite, Tailwind CSS, shadcn/ui                   |
+| Infrastructure | Docker, GitHub Actions, Azure App Service (API), Azure Static Web Apps (web) |
+
+> **Multi-cloud:** compute, database, and web hosting run on **Azure**; durable
+> object storage uses **AWS S3**. The vector index runs embedded inside the API
+> and is snapshotted to S3, so no separate vector-DB server is required.
 
 ## Architecture
 
 ```
-┌───────────┐      REST      ┌────────────────────────────┐
-│  React /  │ ─────────────► │        FastAPI API         │
-│   Vite    │ ◄───────────── │  api → services → models   │
-└───────────┘      JSON      └──────────┬─────────┬────────┘
-                                        │         │
-                              metadata  │         │  vectors
-                                        ▼         ▼
-                                  ┌─────────┐ ┌────────┐
-                                  │ Postgres│ │ FAISS  │
-                                  │         │ │ index  │
-                                  └─────────┘ └────────┘
+                         ┌───────────────────────────┐
+                         │    React + Vite frontend   │
+                         │  (Azure Static Web Apps)   │
+                         └─────────────┬─────────────┘
+                                       │ REST / JSON
+                                       ▼
+        GitHub repo  ───clone───►  ┌───────────────────────────┐
+                                   │      FastAPI backend       │
+                                   │    (Azure App Service)     │
+                                   │  api → services → models   │
+                                   └──┬──────────┬──────────┬───┘
+                          metadata    │  vectors │          │  blobs
+                                      ▼          ▼          ▼
+                        ┌───────────────┐ ┌───────────┐ ┌──────────────────┐
+                        │ Azure Postgres│ │  ChromaDB  │ │      AWS S3      │
+                        │  (relational) │ │ (embedded) │ │ archives · logs  │
+                        └───────────────┘ └─────┬─────┘ │ reports · indexes│
+                                                │       └────────▲─────────┘
+                                                └─ index snapshot ┘
 ```
 
 A layered backend keeps concerns separate: routes handle HTTP, services hold
-business logic, and models own persistence. Metadata lives in a relational
-database; embeddings live in a FAISS vector index — each store used for what it
-does best.
+business logic, models own persistence. Each store is used for what it does best:
+relational metadata in **Azure PostgreSQL**, semantic vectors in an **embedded
+ChromaDB** index, and durable blobs (repository archives, logs, reports, and
+exported index snapshots) in **AWS S3**. Compute and web hosting run on Azure;
+object storage on AWS — a deliberate multi-cloud split.
 
 ## Local development
 
