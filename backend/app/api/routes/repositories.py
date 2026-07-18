@@ -1,0 +1,104 @@
+"""Repository ingestion routes.
+
+Two ways in — a public GitHub URL, or a direct .zip upload — plus list/get/delete.
+Ingestion returns immediately with a `pending`/`indexing` record; the archiving and
+file-count happen in a background task that flips the status to `ready`/`failed`.
+"""
+
+from typing import Annotated
+
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+    status,
+)
+from sqlalchemy import select
+
+from app.api.deps import CurrentUser, DbSession, StorageDep
+from app.core.config import settings
+from app.models.repository import Repository, RepoSource
+from app.schemas.repository import GithubIngestRequest, RepositoryRead
+from app.services import ingestion_service
+
+router = APIRouter(prefix="/repositories", tags=["repositories"])
+
+
+def _get_owned_repo(db: DbSession, repo_id: int, user: CurrentUser) -> Repository:
+    repo = db.get(Repository, repo_id)
+    if repo is None or repo.owner_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found")
+    return repo
+
+
+@router.get("", response_model=list[RepositoryRead])
+def list_repositories(db: DbSession, user: CurrentUser) -> list[Repository]:
+    stmt = (
+        select(Repository)
+        .where(Repository.owner_id == user.id)
+        .order_by(Repository.created_at.desc())
+    )
+    return list(db.scalars(stmt))
+
+
+@router.get("/{repo_id}", response_model=RepositoryRead)
+def get_repository(repo_id: int, db: DbSession, user: CurrentUser) -> Repository:
+    return _get_owned_repo(db, repo_id, user)
+
+
+@router.post("", response_model=RepositoryRead, status_code=status.HTTP_201_CREATED)
+def ingest_github(
+    payload: GithubIngestRequest,
+    db: DbSession,
+    user: CurrentUser,
+    background: BackgroundTasks,
+) -> Repository:
+    try:
+        _, name = ingestion_service.parse_github_url(payload.url)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
+
+    repo = ingestion_service.create_repository(
+        db, user.id, name=name, source=RepoSource.github, source_url=payload.url
+    )
+    background.add_task(ingestion_service.run_ingestion, repo.id)
+    return repo
+
+
+@router.post("/upload", response_model=RepositoryRead, status_code=status.HTTP_201_CREATED)
+async def ingest_upload(
+    db: DbSession,
+    user: CurrentUser,
+    background: BackgroundTasks,
+    name: Annotated[str, Form(min_length=1, max_length=255)],
+    file: Annotated[UploadFile, File()],
+) -> Repository:
+    if not file.filename or not file.filename.endswith(".zip"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Upload must be a .zip archive",
+        )
+    data = await file.read()
+    if len(data) > settings.MAX_ARCHIVE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Archive exceeds the size limit",
+        )
+
+    repo = ingestion_service.create_repository(db, user.id, name=name, source=RepoSource.upload)
+    background.add_task(ingestion_service.run_ingestion, repo.id, data)
+    return repo
+
+
+@router.delete("/{repo_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_repository(repo_id: int, db: DbSession, user: CurrentUser, storage: StorageDep) -> None:
+    repo = _get_owned_repo(db, repo_id, user)
+    if repo.archive_key:
+        storage.delete(repo.archive_key)
+    db.delete(repo)
+    db.commit()
