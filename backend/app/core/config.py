@@ -30,6 +30,13 @@ class Settings(BaseSettings):
     # Origins allowed to call the API from a browser (the Vite dev server).
     CORS_ORIGINS: list[str] = ["http://localhost:5173"]
 
+    # --- Auth / JWT ---
+    # DEV DEFAULT ONLY. Override with a long random value in production
+    # (e.g. `openssl rand -hex 32`). A leaked secret lets anyone forge tokens.
+    JWT_SECRET_KEY: str = "dev-insecure-secret-change-me-in-production-please"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
+
 
 @lru_cache
 def get_settings() -> Settings:

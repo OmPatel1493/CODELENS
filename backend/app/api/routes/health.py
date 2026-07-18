@@ -5,19 +5,13 @@ to prove the database is reachable — useful for deploy readiness probes, since
 app can be "up" while its database is unreachable.
 """
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from sqlalchemy import text
-from sqlalchemy.orm import Session
 
+from app.api.deps import DbSession
 from app.core.config import settings
-from app.core.database import get_db
 
 router = APIRouter(tags=["health"])
-
-# Reusable typed dependency — the current FastAPI idiom (avoids a call in defaults).
-DbSession = Annotated[Session, Depends(get_db)]
 
 
 @router.get("/health")

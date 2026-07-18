@@ -32,10 +32,12 @@ export function LandingPage() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button render={<Link to="/login" />} variant="ghost">
+          <Button render={<Link to="/login" />} nativeButton={false} variant="ghost">
             Sign in
           </Button>
-          <Button render={<Link to="/app" />}>Get started</Button>
+          <Button render={<Link to="/register" />} nativeButton={false}>
+            Get started
+          </Button>
         </div>
       </header>
 
@@ -50,10 +52,15 @@ export function LandingPage() {
             explanation for every result.
           </p>
           <div className="mt-8 flex justify-center gap-3">
-            <Button render={<Link to="/app" />} size="lg">
-              Try the dashboard
+            <Button render={<Link to="/register" />} nativeButton={false} size="lg">
+              Get started
             </Button>
-            <Button render={<Link to="/login" />} size="lg" variant="outline">
+            <Button
+              render={<Link to="/login" />}
+              nativeButton={false}
+              size="lg"
+              variant="outline"
+            >
               Sign in
             </Button>
           </div>
