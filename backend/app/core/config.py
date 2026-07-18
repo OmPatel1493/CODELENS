@@ -37,6 +37,23 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
 
+    # --- Storage (repository archives, logs, reports, index snapshots) ---
+    # "local" = filesystem (free, offline, the dev default).
+    # "s3"    = AWS S3 / any S3-compatible store (set the AWS_* + S3_* vars).
+    STORAGE_BACKEND: str = "local"
+    LOCAL_STORAGE_DIR: str = "./data/storage"
+
+    # Only used when STORAGE_BACKEND=s3.
+    S3_BUCKET: str = ""
+    AWS_REGION: str = "us-east-1"
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
+    # Custom endpoint for S3-compatible stores (e.g. MinIO). Blank = real AWS.
+    S3_ENDPOINT_URL: str = ""
+
+    # Guardrail: reject repository archives larger than this (bytes). Default 50 MB.
+    MAX_ARCHIVE_BYTES: int = 50 * 1024 * 1024
+
 
 @lru_cache
 def get_settings() -> Settings:

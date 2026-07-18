@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, health
+from app.api.routes import auth, health, repositories
 from app.core.config import settings
 from app.core.database import init_db
 
@@ -44,6 +44,7 @@ def create_app() -> FastAPI:
     # Every route is mounted under /api so the frontend has a single, stable prefix.
     app.include_router(health.router, prefix="/api")
     app.include_router(auth.router, prefix="/api")
+    app.include_router(repositories.router, prefix="/api")
 
     return app
 

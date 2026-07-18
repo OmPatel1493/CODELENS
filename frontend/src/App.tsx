@@ -6,6 +6,7 @@ import { LandingPage } from "@/pages/landing";
 import { LoginPage } from "@/pages/login";
 import { RegisterPage } from "@/pages/register";
 import { DashboardPage } from "@/pages/dashboard";
+import { RepositoriesPage } from "@/pages/repositories";
 
 /**
  * Route map.
@@ -26,6 +27,7 @@ export default function App() {
         <Route element={<RequireAuth />}>
           <Route path="/app" element={<AppLayout />}>
             <Route index element={<DashboardPage />} />
+            <Route path="repositories" element={<RepositoriesPage />} />
           </Route>
         </Route>
 

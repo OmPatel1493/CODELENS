@@ -10,9 +10,13 @@ from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.user import User
 from app.services import auth_service
+from app.services.storage import StorageBackend, get_storage
 
 # Request-scoped DB session.
 DbSession = Annotated[Session, Depends(get_db)]
+
+# Configured object-storage backend (local or S3).
+StorageDep = Annotated[StorageBackend, Depends(get_storage)]
 
 # Reads the `Authorization: Bearer <token>` header. `tokenUrl` powers Swagger's
 # "Authorize" button and documents where clients obtain a token.

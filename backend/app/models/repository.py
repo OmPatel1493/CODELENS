@@ -5,7 +5,7 @@ from __future__ import annotations
 import enum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Enum, ForeignKey, String
+from sqlalchemy import Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -40,6 +40,15 @@ class Repository(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255))
     source: Mapped[RepoSource] = mapped_column(Enum(RepoSource))
     status: Mapped[RepoStatus] = mapped_column(Enum(RepoStatus), default=RepoStatus.pending)
+
+    # For github repos: the source URL. NULL for uploads.
+    source_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    # Storage key of the archived source (in the configured storage backend).
+    archive_key: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    # Number of files discovered during ingestion.
+    file_count: Mapped[int] = mapped_column(Integer, default=0)
+    # Populated with the reason when status == failed.
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     owner: Mapped[User] = relationship(back_populates="repositories")
     chunks: Mapped[list[CodeChunk]] = relationship(

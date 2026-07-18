@@ -52,10 +52,13 @@ export async function apiFetch<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const token = getToken();
+  // For FormData, let the browser set Content-Type (it must include the multipart
+  // boundary). For everything else we send JSON.
+  const isFormData = options.body instanceof FormData;
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
@@ -111,4 +114,45 @@ export function loginUser(email: string, password: string) {
 
 export function getMe() {
   return apiFetch<AuthUser>("/auth/me");
+}
+
+// ── Repositories ─────────────────────────────────────────────────
+
+export type RepoStatus = "pending" | "indexing" | "ready" | "failed";
+export type RepoSource = "github" | "upload";
+
+export interface Repository {
+  id: number;
+  name: string;
+  source: RepoSource;
+  status: RepoStatus;
+  source_url: string | null;
+  file_count: number;
+  error_message: string | null;
+  created_at: string;
+}
+
+export function listRepositories() {
+  return apiFetch<Repository[]>("/repositories");
+}
+
+export function ingestGithubRepo(url: string) {
+  return apiFetch<Repository>("/repositories", {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
+}
+
+export function uploadRepository(name: string, file: File) {
+  const form = new FormData();
+  form.append("name", name);
+  form.append("file", file);
+  return apiFetch<Repository>("/repositories/upload", {
+    method: "POST",
+    body: form,
+  });
+}
+
+export function deleteRepository(id: number) {
+  return apiFetch<void>(`/repositories/${id}`, { method: "DELETE" });
 }
