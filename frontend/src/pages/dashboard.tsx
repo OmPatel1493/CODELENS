@@ -1,4 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
 import { FolderGit2, Search, Bug } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import {
   Card,
@@ -7,14 +9,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
-const STATS = [
-  { label: "Repositories", value: "0", icon: FolderGit2 },
-  { label: "Indexed chunks", value: "0", icon: Search },
-  { label: "Searches run", value: "0", icon: Bug },
-];
+import { Button } from "@/components/ui/button";
+import { getRepositoryStats } from "@/lib/api";
 
 export function DashboardPage() {
+  const { data: stats } = useQuery({
+    queryKey: ["repository-stats"],
+    queryFn: getRepositoryStats,
+  });
+
+  const tiles = [
+    { label: "Repositories", value: stats?.repositories ?? 0, icon: FolderGit2 },
+    { label: "Indexed chunks", value: stats?.indexed_chunks ?? 0, icon: Search },
+    { label: "Searches run", value: 0, icon: Bug },
+  ];
+
   return (
     <div className="mx-auto max-w-5xl space-y-8">
       <div>
@@ -25,7 +34,7 @@ export function DashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        {STATS.map(({ label, value, icon: Icon }) => (
+        {tiles.map(({ label, value, icon: Icon }) => (
           <Card key={label}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardDescription>{label}</CardDescription>
@@ -42,10 +51,14 @@ export function DashboardPage() {
         <CardHeader>
           <CardTitle>Get started</CardTitle>
           <CardDescription>
-            Repository ingestion, semantic search, and bug localization plug in
-            here as each milestone lands.
+            Add a repository to index its code, then search it in plain English.
           </CardDescription>
         </CardHeader>
+        <CardContent>
+          <Button render={<Link to="/app/repositories" />} nativeButton={false}>
+            Add a repository
+          </Button>
+        </CardContent>
       </Card>
     </div>
   );
