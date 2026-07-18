@@ -86,19 +86,18 @@ def create_repository(
     return repo
 
 
-def process_repository_archive(
+def archive_repository(
     db: Session,
     storage: StorageBackend,
     repo: Repository,
     archive_bytes: bytes,
     ext: str,
 ) -> None:
-    """Store the archive, count files, mark ready. Pure w.r.t. its dependencies."""
+    """Store the source archive and record its file count. Does not set status."""
     key = f"repositories/{repo.id}/source.{ext}"
     storage.save_bytes(key, archive_bytes)
     repo.archive_key = key
     repo.file_count = count_files(archive_bytes, ext)
-    repo.status = RepoStatus.ready
     db.commit()
 
 
@@ -126,7 +125,23 @@ def run_ingestion(repo_id: int, upload_bytes: bytes | None = None) -> None:
                 raise ValueError("No uploaded archive provided")
             archive_bytes, ext = upload_bytes, "zip"
 
-        process_repository_archive(db, storage, repo, archive_bytes, ext)
+        archive_repository(db, storage, repo, archive_bytes, ext)
+
+        # Parse → embed → store vectors. Imported here to keep the heavy ML deps
+        # out of the import path for requests that never ingest.
+        from app.services import indexing_service, vector_store
+
+        indexing_service.index_repository(db, repo, archive_bytes, ext)
+
+        # Best-effort: snapshot the vector index to storage (durability). A
+        # snapshot failure must not fail an otherwise-successful ingestion.
+        try:
+            vector_store.snapshot_to_storage(storage)
+        except Exception:
+            pass
+
+        repo.status = RepoStatus.ready
+        db.commit()
     except Exception as exc:  # noqa: BLE001 — record any failure for the user
         repo.status = RepoStatus.failed
         repo.error_message = str(exc)

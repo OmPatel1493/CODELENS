@@ -11,7 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.models.repository import Repository, RepoSource, RepoStatus
+from app.models.repository import Repository, RepoSource
 from app.models.user import User
 from app.services import ingestion_service
 from app.services.storage import LocalStorageBackend
@@ -62,7 +62,7 @@ def test_count_files_in_zip():
 # ── Background processing (direct, no server/network) ────────────
 
 
-def test_process_repository_archive(db_session: Session, tmp_path):
+def test_archive_repository(db_session: Session, tmp_path):
     user = User(email="dev@codelens.io", hashed_password="x")
     db_session.add(user)
     db_session.commit()
@@ -73,9 +73,8 @@ def test_process_repository_archive(db_session: Session, tmp_path):
     storage = LocalStorageBackend(str(tmp_path))
     data = _make_zip({"main.py": b"print(1)", "util/helpers.py": b"pass"})
 
-    ingestion_service.process_repository_archive(db_session, storage, repo, data, "zip")
+    ingestion_service.archive_repository(db_session, storage, repo, data, "zip")
 
-    assert repo.status is RepoStatus.ready
     assert repo.file_count == 2
     assert repo.archive_key == f"repositories/{repo.id}/source.zip"
     assert storage.exists(repo.archive_key)

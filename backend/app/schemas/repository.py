@@ -17,6 +17,13 @@ class GithubIngestRequest(BaseModel):
     )
 
 
+class RepoStats(BaseModel):
+    """Aggregate counts for the current user's dashboard."""
+
+    repositories: int
+    indexed_chunks: int
+
+
 class RepositoryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

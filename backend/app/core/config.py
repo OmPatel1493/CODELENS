@@ -54,6 +54,32 @@ class Settings(BaseSettings):
     # Guardrail: reject repository archives larger than this (bytes). Default 50 MB.
     MAX_ARCHIVE_BYTES: int = 50 * 1024 * 1024
 
+    # --- Embeddings / vector index ---
+    # Small, fast, CPU-friendly sentence-transformers model (384-dim, ~80 MB).
+    EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
+    # Where the embedded ChromaDB index persists on disk.
+    CHROMA_DIR: str = "./data/chroma"
+    # Skip files bigger than this when parsing (bytes) — avoids huge/minified files.
+    MAX_FILE_BYTES: int = 1024 * 1024
+    # Only these extensions are parsed into chunks (source code, not assets).
+    CODE_EXTENSIONS: list[str] = [
+        ".py",
+        ".js",
+        ".jsx",
+        ".ts",
+        ".tsx",
+        ".java",
+        ".go",
+        ".rb",
+        ".rs",
+        ".c",
+        ".h",
+        ".cpp",
+        ".hpp",
+        ".cs",
+        ".php",
+    ]
+
 
 @lru_cache
 def get_settings() -> Settings:

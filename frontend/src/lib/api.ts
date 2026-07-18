@@ -156,3 +156,12 @@ export function uploadRepository(name: string, file: File) {
 export function deleteRepository(id: number) {
   return apiFetch<void>(`/repositories/${id}`, { method: "DELETE" });
 }
+
+export interface RepoStats {
+  repositories: number;
+  indexed_chunks: number;
+}
+
+export function getRepositoryStats() {
+  return apiFetch<RepoStats>("/repositories/stats");
+}

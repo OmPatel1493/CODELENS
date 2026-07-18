@@ -16,12 +16,13 @@ from fastapi import (
     UploadFile,
     status,
 )
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, DbSession, StorageDep
 from app.core.config import settings
+from app.models.code_chunk import CodeChunk
 from app.models.repository import Repository, RepoSource
-from app.schemas.repository import GithubIngestRequest, RepositoryRead
+from app.schemas.repository import GithubIngestRequest, RepositoryRead, RepoStats
 from app.services import ingestion_service
 
 router = APIRouter(prefix="/repositories", tags=["repositories"])
@@ -42,6 +43,21 @@ def list_repositories(db: DbSession, user: CurrentUser) -> list[Repository]:
         .order_by(Repository.created_at.desc())
     )
     return list(db.scalars(stmt))
+
+
+@router.get("/stats", response_model=RepoStats)
+def repository_stats(db: DbSession, user: CurrentUser) -> RepoStats:
+    """Aggregate counts for the current user (drives the dashboard)."""
+    repo_count = db.scalar(
+        select(func.count()).select_from(Repository).where(Repository.owner_id == user.id)
+    )
+    chunk_count = db.scalar(
+        select(func.count())
+        .select_from(CodeChunk)
+        .join(Repository, CodeChunk.repository_id == Repository.id)
+        .where(Repository.owner_id == user.id)
+    )
+    return RepoStats(repositories=repo_count or 0, indexed_chunks=chunk_count or 0)
 
 
 @router.get("/{repo_id}", response_model=RepositoryRead)
@@ -100,5 +116,8 @@ def delete_repository(repo_id: int, db: DbSession, user: CurrentUser, storage: S
     repo = _get_owned_repo(db, repo_id, user)
     if repo.archive_key:
         storage.delete(repo.archive_key)
+    from app.services import vector_store
+
+    vector_store.delete_repository_index(repo.id)
     db.delete(repo)
     db.commit()
