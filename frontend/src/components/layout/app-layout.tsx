@@ -10,11 +10,14 @@ import {
   FolderGit2,
   Bug,
   ScanSearch,
+  LogOut,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BackendStatus } from "@/components/backend-status";
+import { useAuth } from "@/components/auth-provider";
+import { Button } from "@/components/ui/button";
 
 const NAV_ITEMS = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -24,6 +27,7 @@ const NAV_ITEMS = [
 ];
 
 export function AppLayout() {
+  const { user, logout } = useAuth();
   return (
     <div className="flex min-h-svh bg-background text-foreground">
       {/* Sidebar */}
@@ -52,7 +56,22 @@ export function AppLayout() {
             </NavLink>
           ))}
         </nav>
-        <div className="border-t p-3">
+        <div className="space-y-3 border-t p-3">
+          {user && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate text-xs text-muted-foreground" title={user.email}>
+                {user.email}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={logout}
+                aria-label="Sign out"
+              >
+                <LogOut className="size-4" />
+              </Button>
+            </div>
+          )}
           <BackendStatus />
         </div>
       </aside>
