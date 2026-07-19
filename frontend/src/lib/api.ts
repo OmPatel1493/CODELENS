@@ -160,8 +160,34 @@ export function deleteRepository(id: number) {
 export interface RepoStats {
   repositories: number;
   indexed_chunks: number;
+  searches_run: number;
 }
 
 export function getRepositoryStats() {
   return apiFetch<RepoStats>("/repositories/stats");
+}
+
+// ── Semantic search ──────────────────────────────────────────────
+
+export interface SearchHit {
+  chunk_id: number;
+  file_path: string;
+  symbol_name: string | null;
+  kind: "file" | "class" | "function";
+  start_line: number;
+  end_line: number;
+  snippet: string;
+  score: number;
+}
+
+export interface SearchResponse {
+  query: string;
+  results: SearchHit[];
+}
+
+export function searchRepository(repoId: number, query: string, limit = 8) {
+  return apiFetch<SearchResponse>(`/repositories/${repoId}/search`, {
+    method: "POST",
+    body: JSON.stringify({ query, limit }),
+  });
 }

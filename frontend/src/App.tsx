@@ -7,6 +7,7 @@ import { LoginPage } from "@/pages/login";
 import { RegisterPage } from "@/pages/register";
 import { DashboardPage } from "@/pages/dashboard";
 import { RepositoriesPage } from "@/pages/repositories";
+import { SearchPage } from "@/pages/search";
 
 /**
  * Route map.
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/app" element={<AppLayout />}>
             <Route index element={<DashboardPage />} />
             <Route path="repositories" element={<RepositoriesPage />} />
+            <Route path="search" element={<SearchPage />} />
           </Route>
         </Route>
 

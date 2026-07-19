@@ -21,7 +21,7 @@ export function DashboardPage() {
   const tiles = [
     { label: "Repositories", value: stats?.repositories ?? 0, icon: FolderGit2 },
     { label: "Indexed chunks", value: stats?.indexed_chunks ?? 0, icon: Search },
-    { label: "Searches run", value: 0, icon: Bug },
+    { label: "Searches run", value: stats?.searches_run ?? 0, icon: Bug },
   ];
 
   return (
