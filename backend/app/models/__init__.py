@@ -6,6 +6,7 @@ Importing the models here ensures they're registered on `Base.metadata` (so
 
 from app.models.code_chunk import ChunkKind, CodeChunk
 from app.models.repository import Repository, RepoSource, RepoStatus
+from app.models.search_log import SearchLog
 from app.models.user import User
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     "Repository",
     "RepoSource",
     "RepoStatus",
+    "SearchLog",
     "CodeChunk",
     "ChunkKind",
 ]

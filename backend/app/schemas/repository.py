@@ -22,6 +22,7 @@ class RepoStats(BaseModel):
 
     repositories: int
     indexed_chunks: int
+    searches_run: int
 
 
 class RepositoryRead(BaseModel):

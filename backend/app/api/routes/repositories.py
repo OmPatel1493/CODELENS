@@ -21,9 +21,11 @@ from sqlalchemy import func, select
 from app.api.deps import CurrentUser, DbSession, StorageDep
 from app.core.config import settings
 from app.models.code_chunk import CodeChunk
-from app.models.repository import Repository, RepoSource
+from app.models.repository import Repository, RepoSource, RepoStatus
+from app.models.search_log import SearchLog
 from app.schemas.repository import GithubIngestRequest, RepositoryRead, RepoStats
-from app.services import ingestion_service
+from app.schemas.search import SearchRequest, SearchResponse
+from app.services import ingestion_service, search_service
 
 router = APIRouter(prefix="/repositories", tags=["repositories"])
 
@@ -57,12 +59,36 @@ def repository_stats(db: DbSession, user: CurrentUser) -> RepoStats:
         .join(Repository, CodeChunk.repository_id == Repository.id)
         .where(Repository.owner_id == user.id)
     )
-    return RepoStats(repositories=repo_count or 0, indexed_chunks=chunk_count or 0)
+    search_count = db.scalar(
+        select(func.count())
+        .select_from(SearchLog)
+        .join(Repository, SearchLog.repository_id == Repository.id)
+        .where(Repository.owner_id == user.id)
+    )
+    return RepoStats(
+        repositories=repo_count or 0,
+        indexed_chunks=chunk_count or 0,
+        searches_run=search_count or 0,
+    )
 
 
 @router.get("/{repo_id}", response_model=RepositoryRead)
 def get_repository(repo_id: int, db: DbSession, user: CurrentUser) -> Repository:
     return _get_owned_repo(db, repo_id, user)
+
+
+@router.post("/{repo_id}/search", response_model=SearchResponse)
+def search_repository(
+    repo_id: int, payload: SearchRequest, db: DbSession, user: CurrentUser
+) -> SearchResponse:
+    repo = _get_owned_repo(db, repo_id, user)
+    if repo.status is not RepoStatus.ready:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Repository is not indexed yet",
+        )
+    results = search_service.search_repository(db, repo, payload.query, payload.limit)
+    return SearchResponse(query=payload.query, results=results)
 
 
 @router.post("", response_model=RepositoryRead, status_code=status.HTTP_201_CREATED)
