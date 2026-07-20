@@ -191,3 +191,46 @@ export function searchRepository(repoId: number, query: string, limit = 8) {
     body: JSON.stringify({ query, limit }),
   });
 }
+
+// ── Bug localization ─────────────────────────────────────────────
+
+export interface ParsedLog {
+  error_type: string | null;
+  message: string | null;
+  files: string[];
+  symbols: string[];
+}
+
+export interface LocalizedFile {
+  file_path: string;
+  score: number;
+  reason: string;
+  matched_symbols: string[];
+  snippet: string;
+  start_line: number;
+  end_line: number;
+}
+
+export interface BugLocalizeResponse {
+  parsed: ParsedLog;
+  results: LocalizedFile[];
+}
+
+export function localizeBug(repoId: number, logText: string, limit = 5) {
+  return apiFetch<BugLocalizeResponse>(`/repositories/${repoId}/localize`, {
+    method: "POST",
+    body: JSON.stringify({ log_text: logText, limit }),
+  });
+}
+
+// ── Analytics ────────────────────────────────────────────────────
+
+export interface RepoAnalytics {
+  kind_breakdown: Record<string, number>;
+  language_breakdown: Record<string, number>;
+  recent_searches: { query: string; result_count: number; created_at: string }[];
+}
+
+export function getRepositoryAnalytics(repoId: number) {
+  return apiFetch<RepoAnalytics>(`/repositories/${repoId}/analytics`);
+}

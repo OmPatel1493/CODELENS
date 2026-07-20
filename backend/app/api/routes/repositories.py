@@ -23,9 +23,16 @@ from app.core.config import settings
 from app.models.code_chunk import CodeChunk
 from app.models.repository import Repository, RepoSource, RepoStatus
 from app.models.search_log import SearchLog
-from app.schemas.repository import GithubIngestRequest, RepositoryRead, RepoStats
+from app.schemas.bug import BugLocalizeRequest, BugLocalizeResponse
+from app.schemas.repository import (
+    GithubIngestRequest,
+    RecentSearch,
+    RepoAnalytics,
+    RepositoryRead,
+    RepoStats,
+)
 from app.schemas.search import SearchRequest, SearchResponse
-from app.services import ingestion_service, search_service
+from app.services import bug_localization_service, ingestion_service, search_service
 
 router = APIRouter(prefix="/repositories", tags=["repositories"])
 
@@ -89,6 +96,57 @@ def search_repository(
         )
     results = search_service.search_repository(db, repo, payload.query, payload.limit)
     return SearchResponse(query=payload.query, results=results)
+
+
+@router.post("/{repo_id}/localize", response_model=BugLocalizeResponse)
+def localize_bug(
+    repo_id: int, payload: BugLocalizeRequest, db: DbSession, user: CurrentUser
+) -> BugLocalizeResponse:
+    repo = _get_owned_repo(db, repo_id, user)
+    if repo.status is not RepoStatus.ready:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Repository is not indexed yet"
+        )
+    parsed, results = bug_localization_service.localize(db, repo, payload.log_text, payload.limit)
+    return BugLocalizeResponse(parsed=parsed, results=results)
+
+
+@router.get("/{repo_id}/analytics", response_model=RepoAnalytics)
+def repository_analytics(repo_id: int, db: DbSession, user: CurrentUser) -> RepoAnalytics:
+    repo = _get_owned_repo(db, repo_id, user)
+
+    kind_rows = db.execute(
+        select(CodeChunk.kind, func.count())
+        .where(CodeChunk.repository_id == repo.id)
+        .group_by(CodeChunk.kind)
+    ).all()
+    kind_breakdown = {str(kind): count for kind, count in kind_rows}
+
+    # Language breakdown by file extension (computed in Python — small per repo).
+    paths = db.scalars(select(CodeChunk.file_path).where(CodeChunk.repository_id == repo.id)).all()
+    language_breakdown: dict[str, int] = {}
+    for path in paths:
+        ext = "." + path.rsplit(".", 1)[-1] if "." in path else "other"
+        language_breakdown[ext] = language_breakdown.get(ext, 0) + 1
+
+    recent = (
+        db.scalars(
+            select(SearchLog)
+            .where(SearchLog.repository_id == repo.id)
+            .order_by(SearchLog.created_at.desc())
+            .limit(5)
+        )
+    ).all()
+    recent_searches = [
+        RecentSearch(query=s.query, result_count=s.result_count, created_at=s.created_at)
+        for s in recent
+    ]
+
+    return RepoAnalytics(
+        kind_breakdown=kind_breakdown,
+        language_breakdown=language_breakdown,
+        recent_searches=recent_searches,
+    )
 
 
 @router.post("", response_model=RepositoryRead, status_code=status.HTTP_201_CREATED)

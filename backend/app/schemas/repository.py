@@ -25,6 +25,20 @@ class RepoStats(BaseModel):
     searches_run: int
 
 
+class RecentSearch(BaseModel):
+    query: str
+    result_count: int
+    created_at: datetime
+
+
+class RepoAnalytics(BaseModel):
+    """Per-repository breakdown for the analytics view."""
+
+    kind_breakdown: dict[str, int]
+    language_breakdown: dict[str, int]
+    recent_searches: list[RecentSearch]
+
+
 class RepositoryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
