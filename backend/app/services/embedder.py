@@ -34,6 +34,12 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
     return vectors.tolist()
 
 
+@lru_cache(maxsize=512)
 def embed_query(text: str) -> list[float]:
-    """Embed a single search query."""
+    """Embed a single search query.
+
+    Cached: identical queries (a repeated search, or a search and a bug-localize
+    with the same text) skip the model call entirely. Callers must treat the
+    returned list as read-only since it's shared across cache hits.
+    """
     return embed_texts([text])[0]

@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import {
   ApiError,
   deleteRepository,
+  getRepositoryAnalytics,
   ingestGithubRepo,
   listRepositories,
   uploadRepository,
@@ -161,6 +162,26 @@ function AddRepoForm() {
   );
 }
 
+function RepoAnalyticsLine({ repoId }: { repoId: number }) {
+  const { data } = useQuery({
+    queryKey: ["analytics", repoId],
+    queryFn: () => getRepositoryAnalytics(repoId),
+  });
+  if (!data) return null;
+  const kinds = data.kind_breakdown;
+  const topLang = Object.entries(data.language_breakdown).sort(
+    (a, b) => b[1] - a[1],
+  )[0]?.[0];
+  const parts = [
+    kinds.function ? `${kinds.function} functions` : null,
+    kinds.class ? `${kinds.class} classes` : null,
+    kinds.file ? `${kinds.file} files` : null,
+    topLang ? `top: ${topLang}` : null,
+  ].filter(Boolean);
+  if (parts.length === 0) return null;
+  return <p className="mt-1 text-xs text-muted-foreground">{parts.join(" · ")}</p>;
+}
+
 function RepoRow({ repo }: { repo: Repository }) {
   const queryClient = useQueryClient();
   const del = useMutation({
@@ -187,6 +208,7 @@ function RepoRow({ repo }: { repo: Repository }) {
               ? (repo.error_message ?? "Ingestion failed")
               : "Processing…"}
         </p>
+        {repo.status === "ready" && <RepoAnalyticsLine repoId={repo.id} />}
       </div>
       <Button
         variant="ghost"
