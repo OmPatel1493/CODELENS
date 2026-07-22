@@ -13,6 +13,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Query,
     UploadFile,
     status,
 )
@@ -45,11 +46,18 @@ def _get_owned_repo(db: DbSession, repo_id: int, user: CurrentUser) -> Repositor
 
 
 @router.get("", response_model=list[RepositoryRead])
-def list_repositories(db: DbSession, user: CurrentUser) -> list[Repository]:
+def list_repositories(
+    db: DbSession,
+    user: CurrentUser,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[Repository]:
     stmt = (
         select(Repository)
         .where(Repository.owner_id == user.id)
         .order_by(Repository.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
     return list(db.scalars(stmt))
 

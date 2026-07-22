@@ -40,26 +40,15 @@ clean REST API and a modern React interface.
 
 ## Architecture
 
-```
-                         ┌───────────────────────────┐
-                         │    React + Vite frontend  │
-                         │  (Azure Static Web Apps)  │
-                         └─────────────┬─────────────┘
-                                       │ REST / JSON
-                                       ▼
-        GitHub repo  ───clone───►  ┌───────────────────────────┐
-                                   │      FastAPI backend      │
-                                   │    (Azure App Service)    │
-                                   │  api → services → models  │
-                                   └──┬──────────┬──────────┬──┘
-                          metadata    │  vectors │          │  blobs
-                                      ▼          ▼          ▼
-                        ┌───────────────┐ ┌───────────┐ ┌──────────────────┐
-                        │ Azure Postgres│ │  ChromaDB │ │      AWS S3      │
-                        │  (relational) │ │ (embedded)│ │ archives · logs  │
-                        └───────────────┘ └─────┬─────┘ │ reports · indexes│
-                                                │       └────────▲─────────┘
-                                                └─ index snapshot ┘
+```mermaid
+flowchart TD
+    U([Developer]) -->|browser| FE["React + Vite<br/>(Azure Static Web Apps)"]
+    FE -->|REST / JSON| API["FastAPI backend<br/>api → services → models<br/>(Azure App Service)"]
+    GH[(GitHub repo)] -->|clone / upload| API
+    API -->|metadata| PG[("Azure PostgreSQL<br/>users · repos · chunks")]
+    API -->|vectors| CH[("ChromaDB<br/>embedded index")]
+    API -->|blobs| S3[("AWS S3<br/>archives · logs · reports · snapshots")]
+    CH -. index snapshot .-> S3
 ```
 
 A layered backend keeps concerns separate: routes handle HTTP, services hold
@@ -83,6 +72,27 @@ uv run pytest                            # run the test suite
 # Interactive API docs → http://localhost:8000/docs
 ```
 
+### With Docker (full stack)
+
+```bash
+docker compose up --build
+# frontend → http://localhost:5173   |   API → http://localhost:8000/docs
+```
+
+Runs Postgres + backend + frontend together (mirrors production). First build is
+slow — the backend image bundles the ML stack.
+
+## Deployment
+
+Free-tier friendly (Azure + AWS S3). See **[DEPLOYMENT.md](DEPLOYMENT.md)** for
+step-by-step instructions and honest cost notes (the ML backend needs a host that
+can run PyTorch — the guide covers the genuinely-free options).
+
+## Continuous integration
+
+Every push and PR runs [CI](.github/workflows/ci.yml): backend lint (ruff) + tests
+(pytest) and a frontend type-check + build.
+
 ## Project layout
 
 ```
@@ -90,12 +100,16 @@ CodeLens/
 ├── backend/                FastAPI service
 │   ├── app/
 │   │   ├── api/routes/      HTTP endpoints
-│   │   ├── core/            config, database
+│   │   ├── core/            config, database, logging
 │   │   ├── models/          SQLAlchemy models
 │   │   ├── schemas/         Pydantic request/response schemas
-│   │   └── services/        business logic
-│   └── tests/
-└── frontend/               React + Vite application
+│   │   └── services/        business logic (storage, ingestion, embeddings, search, …)
+│   ├── tests/
+│   └── Dockerfile
+├── frontend/               React + Vite application (+ Dockerfile, nginx.conf)
+├── .github/workflows/      CI (lint, test, build)
+├── docker-compose.yml      local full stack
+└── DEPLOYMENT.md           deploy guide (Azure + AWS S3)
 ```
 
 ## License
