@@ -148,3 +148,19 @@ def test_list_get_and_delete(client: TestClient, monkeypatch):
 
     assert client.delete(f"/api/repositories/{created['id']}", headers=headers).status_code == 204
     assert client.get(f"/api/repositories/{created['id']}", headers=headers).status_code == 404
+
+
+def test_list_pagination(client: TestClient, monkeypatch):
+    monkeypatch.setattr(ingestion_service, "run_ingestion", lambda *a, **k: None)
+    headers = _auth_headers(client)
+    for i in range(3):
+        client.post(
+            "/api/repositories",
+            json={"url": f"https://github.com/acme/repo{i}"},
+            headers=headers,
+        )
+
+    assert len(client.get("/api/repositories?limit=2", headers=headers).json()) == 2
+    assert len(client.get("/api/repositories?limit=2&offset=2", headers=headers).json()) == 1
+    # invalid params are rejected
+    assert client.get("/api/repositories?limit=0", headers=headers).status_code == 422

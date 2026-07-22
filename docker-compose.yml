@@ -1,0 +1,54 @@
+# Local full-stack run: Postgres + FastAPI backend + React frontend (nginx).
+# Mirrors the production topology (Postgres instead of SQLite). Object storage
+# stays on the local filesystem backend here; production uses AWS S3.
+#
+#   docker compose up --build
+#   frontend → http://localhost:5173   |   API → http://localhost:8000/docs
+#
+# Note: the backend image is large (~2 GB) due to the ML stack; first build is slow.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: codelens
+      POSTGRES_PASSWORD: codelens
+      POSTGRES_DB: codelens
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codelens"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://codelens:codelens@db:5432/codelens
+      JWT_SECRET_KEY: local-dev-secret-change-me-in-production-please
+      CORS_ORIGINS: '["http://localhost:5173"]'
+      STORAGE_BACKEND: local
+    ports:
+      - "8000:8000"
+    volumes:
+      - storagedata:/app/data
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000/api
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  pgdata:
+  storagedata:

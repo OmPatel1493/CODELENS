@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "CodeLens API"
     ENVIRONMENT: str = "development"  # development | production
     DEBUG: bool = True
+    LOG_LEVEL: str = "INFO"  # DEBUG | INFO | WARNING | ERROR
 
     # --- Database ---
     # SQLite for the MVP; swap this one string for a Postgres URL later.
