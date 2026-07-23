@@ -58,6 +58,18 @@ class Settings(BaseSettings):
     # --- Embeddings / vector index ---
     # Small, fast, CPU-friendly sentence-transformers model (384-dim, ~80 MB).
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
+    # How embeddings are computed:
+    #   "local" = sentence-transformers on-box (torch). Free + offline, the dev
+    #             default. Needs the optional `local` extra (`uv sync --extra local`).
+    #   "api"   = a hosted embedding API over HTTP (no torch in the image), so the
+    #             backend fits a small free host. Defaults to the Hugging Face
+    #             Inference API serving the *same* model, so vectors match dev.
+    EMBEDDING_BACKEND: str = "local"  # local | api
+    # Override the embedding API endpoint (blank => HF Inference API for EMBEDDING_MODEL).
+    EMBEDDING_API_URL: str = ""
+    # Bearer token for the embedding API (a free HF read token for the default).
+    HF_API_TOKEN: str = ""
+    EMBEDDING_API_TIMEOUT: float = 60.0
     # Where the embedded ChromaDB index persists on disk.
     CHROMA_DIR: str = "./data/chroma"
     # Skip files bigger than this when parsing (bytes) — avoids huge/minified files.

@@ -1,0 +1,32 @@
+# Render Blueprint — deploys the CodeLens backend as a free Docker web service.
+# In Render: New → Blueprint → pick this repo. Then set the two `sync: false`
+# secrets (HF_API_TOKEN, CORS_ORIGINS) in the dashboard.
+#
+# The image is slim (no torch) because it runs EMBEDDING_BACKEND=api — embeddings
+# are computed by a hosted API, which is what lets it fit the 512 MB free plan.
+services:
+  - type: web
+    name: codelens-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: EMBEDDING_BACKEND
+        value: api
+      # Free HF read token (huggingface.co/settings/tokens) — set in dashboard.
+      - key: HF_API_TOKEN
+        sync: false
+      # JSON array of allowed browser origins, e.g. ["https://codelens.pages.dev"].
+      - key: CORS_ORIGINS
+        sync: false
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      # Demo runs on ephemeral SQLite + local storage (data resets on redeploy).
+      # For durability, set DATABASE_URL (Postgres) and STORAGE_BACKEND=s3 (+ AWS_*).

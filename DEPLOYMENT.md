@@ -1,106 +1,126 @@
 # Deploying CodeLens
 
-Target topology: **frontend on Azure Static Web Apps**, **object storage on AWS S3**,
-**database on Azure PostgreSQL**, and the **FastAPI backend on a host that can run
-PyTorch**. This guide favors free tiers and is explicit about where "free" runs out.
+The live demo runs **$0 and without a credit card**: the **FastAPI backend on
+Render** (free Docker web service) and the **frontend on Cloudflare Pages**. Data is
+ephemeral by default (SQLite + local storage); a durable upgrade (PostgreSQL + AWS S3)
+is **config-only** — no code changes — and covered at the end.
 
-> **The one honest caveat.** The backend bundles PyTorch + sentence-transformers +
-> ChromaDB (~2 GB, needs ~1–2 GB RAM to embed). That does **not** fit Azure App
-> Service **F1 (free)** or Render's 512 MB free tier. For a genuinely $0 backend,
-> use **Hugging Face Spaces** (free CPU tier, built for ML). Azure App Service is
-> the right home only on a **paid** plan (B1+) or with student credits.
+> **Why not Hugging Face Spaces?** Earlier versions of this guide used HF Spaces
+> (Docker SDK) as the free ML host. In **early July 2026 HF made Docker Spaces
+> PRO-only ($9/mo)**, so it's no longer a $0 option. See ENGINEERING_NOTES §12.
+
+> **How the free deploy fits.** The backend normally bundles PyTorch (~2 GB), which
+> doesn't fit a 512 MB free host. So the deployed image sets **`EMBEDDING_BACKEND=api`**:
+> embeddings are computed by a hosted Inference API instead of an on-box model, and
+> `sentence-transformers`/torch is left out of the image (it lives in the optional
+> `local` extra, used only for local dev). Result: a few-hundred-MB image that fits
+> Render's free tier.
 
 ---
 
 ## 0. Prerequisites
 
 - Code pushed to GitHub (CI green).
-- A strong secret: `openssl rand -hex 32` → use as `JWT_SECRET_KEY`.
-- Accounts as needed: GitHub, AWS (for S3), Azure (for frontend/DB), Hugging Face
-  (for the free backend).
+- A **free Hugging Face read token** for the embedding API:
+  [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) (role: Read).
+- Accounts: GitHub, [Render](https://render.com), [Cloudflare](https://dash.cloudflare.com).
+  (AWS + a Postgres provider only if you want the durable upgrade in §5.)
 
-## 1. AWS S3 (object storage) — free tier, 12 months
+## 1. Backend — Render (free Docker web service)
 
-1. **Set a zero-spend budget alarm first** (Billing → Budgets → *Zero spend budget*).
-2. Create an **IAM user** with a policy scoped to one bucket (`s3:PutObject`,
-   `GetObject`, `DeleteObject`, `ListBucket`) and generate an access key.
-3. Create a bucket `codelens-<you>` (Block Public Access = ON).
-4. You'll set `STORAGE_BACKEND=s3`, `S3_BUCKET`, `AWS_REGION`,
-   `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` on the backend host.
+The repo ships a **`render.yaml` Blueprint** at the root, so most of this is automatic.
 
-*(Staying on `STORAGE_BACKEND=local` is fine for a demo — but App Service / Spaces
-disks are ephemeral, so uploads won't survive restarts. S3 is the durable choice.)*
+1. In Render: **New → Blueprint** → connect your GitHub repo → select it. Render reads
+   `render.yaml` and provisions a free Docker web service named `codelens-api`
+   (`rootDir: backend`, health check `/api/health`, `EMBEDDING_BACKEND=api`,
+   auto-generated `JWT_SECRET_KEY`).
+2. Set the two secrets it asks for (marked `sync: false` in the Blueprint):
+   - `HF_API_TOKEN` — your Hugging Face read token.
+   - `CORS_ORIGINS` — leave as `["*"]` for now; tighten in §3 once the frontend exists.
+3. Deploy. First build takes a few minutes. Your API is then live at
+   `https://codelens-api.onrender.com` (Render shows the exact URL).
+4. Verify: open `https://<your-api>.onrender.com/docs` (Swagger) and
+   `GET /api/health` → `{"status":"ok"}`.
 
-## 2. Database — Azure Database for PostgreSQL (Flexible Server), free 12 months
+> **No `render.yaml`?** You can instead create the service by hand: New → Web Service →
+> your repo → Root Directory `backend`, Runtime **Docker**, Instance **Free**, and add
+> the env vars from the table in §4.
 
-1. Create a Flexible Server (Burstable **B1ms**, which the 12-month free grant
-   covers), a database `codelens`, and add a firewall rule for your backend host
-   (or "allow Azure services").
-2. Connection string for the backend:
-   ```
-   DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:5432/codelens?sslmode=require
-   ```
-   (SQLite still works for a quick demo — just leave `DATABASE_URL` unset.)
+*(Alternative hosts that run the **full torch image** unchanged — Google Cloud Run,
+Fly.io — work too, but require a credit card. See ENGINEERING_NOTES §12.)*
 
-## 3. Backend
+## 2. Frontend — Cloudflare Pages (free)
 
-### Option A — Hugging Face Spaces (recommended, free, runs the ML stack)
+1. [Cloudflare dashboard](https://dash.cloudflare.com) → **Workers & Pages** →
+   **Create** → **Pages** → **Connect to Git** → pick the repo.
+2. Build settings:
+   - Framework preset: **Vite**
+   - **Root directory:** `frontend`
+   - Build command: `npm run build` · Output directory: `dist`
+3. Environment variable: **`VITE_API_URL`** = `https://<your-api>.onrender.com/api`
+   (baked in at build time — the trailing `/api` matters).
+4. Deploy → you get `https://<project>.pages.dev`. Copy it.
 
-1. Create a **Space** → SDK: **Docker**.
-2. Point it at this repo's `backend/` (or push the backend with its `Dockerfile`).
-   Spaces listens on port **7860**, so set the start command / `CMD` to
-   `uvicorn app.main:app --host 0.0.0.0 --port 7860` (or add an `app_port` in the
-   Space config).
-3. Add **Secrets** in the Space settings: `JWT_SECRET_KEY`, `DATABASE_URL`,
-   `CORS_ORIGINS` (your Static Web App URL), and the `S3_*` / `AWS_*` vars.
-4. Your API base becomes `https://<user>-<space>.hf.space/api`.
+## 3. Wire CORS together
 
-### Option B — Azure App Service (paid B1+ / student credits)
+Back in Render → the service → **Environment**, set:
 
-1. Create a **Web App for Containers** (Linux, **B1** or higher — F1 can't run torch).
-2. Deploy the `backend/Dockerfile` image (via GitHub Actions or `az webapp`).
-3. Set the same env vars under **Configuration → Application settings**.
+- `CORS_ORIGINS` = `["https://<project>.pages.dev"]`
+  (**JSON array string** — brackets + quotes required, or the app crashes on boot).
 
-## 4. Frontend — Azure Static Web Apps (free)
+Save; Render redeploys. **CORS is the usual gotcha:** the origin must match exactly,
+with no trailing slash.
 
-1. Create a Static Web App linked to your GitHub repo. Build config:
-   - **App location:** `frontend`
-   - **Output location:** `dist`
-   - Build command: `npm run build`
-2. Set the build-time env var **`VITE_API_URL`** to your backend's `/api` URL
-   (e.g. `https://<user>-<space>.hf.space/api`). Static Web Apps injects it at build.
-3. Azure creates a GitHub Actions workflow to build & deploy on push.
-
-## 5. Wire it together
-
-On the **backend host**, set:
+## 4. Backend environment variables
 
 | Variable | Value |
 | --- | --- |
-| `JWT_SECRET_KEY` | output of `openssl rand -hex 32` |
-| `CORS_ORIGINS` | `["https://<your-static-web-app-url>"]` |
-| `DATABASE_URL` | Azure Postgres DSN (or unset for SQLite) |
-| `STORAGE_BACKEND` | `s3` |
-| `S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | from step 1 |
-| `ENVIRONMENT` | `production` · `DEBUG=false` |
+| `EMBEDDING_BACKEND` | `api` (set by the Blueprint) |
+| `HF_API_TOKEN` | free HF read token (embedding API auth) |
+| `JWT_SECRET_KEY` | strong secret (Blueprint auto-generates; or `openssl rand -hex 32`) |
+| `CORS_ORIGINS` | `["https://<your-pages-url>"]` (JSON array) |
+| `ENVIRONMENT` | `production` · `DEBUG` = `false` |
+| `DATABASE_URL` | *(optional)* Postgres DSN — unset ⇒ ephemeral SQLite |
+| `STORAGE_BACKEND` | `local` (ephemeral) or `s3` (+ the `S3_*` / `AWS_*` vars) |
 
-**CORS is the usual gotcha:** the backend must list the exact frontend origin, or
-the browser blocks every request.
+## 5. Verify end to end
 
-## 6. Verify
+- `GET https://<your-api>.onrender.com/api/health` → `{"status":"ok"}`
+- Open the Pages site → register → add a small **public** GitHub repo → wait for
+  `ready` → search. If requests are blocked, it's almost always `CORS_ORIGINS`.
 
-- `GET https://<backend>/api/health` → `{"status":"ok"}`
-- `GET https://<backend>/api/health/db` → confirms the DB connection
-- Open the Static Web App, register, add a repo, search — end to end.
+> Free Render services **spin down after ~15 min idle** (~30–60 s cold start on the
+> next request) and use **ephemeral disk** (SQLite + uploaded repos reset on redeploy).
+> Expected for a demo. Click the link a minute before showing someone.
+
+---
+
+## Durable upgrade (optional) — Postgres + S3, config-only
+
+Nothing below requires a code change — both are behind env-var-selected abstractions.
+
+**Database → managed PostgreSQL.** Any free-tier Postgres (Render Postgres, Supabase,
+Neon, Azure Database for PostgreSQL). Set:
+```
+DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:5432/codelens?sslmode=require
+```
+
+**Object storage → AWS S3** (free tier: 5 GB / 12 months).
+1. Set a **zero-spend budget alarm** first (Billing → Budgets).
+2. Create an IAM user scoped to one bucket (`s3:PutObject/GetObject/DeleteObject/ListBucket`).
+3. Bucket `codelens-<you>` (Block Public Access ON).
+4. Set `STORAGE_BACKEND=s3`, `S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`,
+   `AWS_SECRET_ACCESS_KEY` on the backend.
 
 ## Cost summary ($0 path)
 
 | Piece | Host | Cost |
 | --- | --- | --- |
-| Frontend | Azure Static Web Apps | Free |
-| Backend (ML) | Hugging Face Spaces | Free CPU tier |
-| Database | Azure PostgreSQL B1ms | Free 12 months (then paid) |
-| Object storage | AWS S3 | Free 5 GB / 12 months (then pennies) |
+| Frontend | Cloudflare Pages | Free (forever) |
+| Backend (slim, API embeddings) | Render free web service | Free (forever; sleeps when idle) |
+| Embeddings | Hugging Face Inference API | Free (rate-limited) |
+| Database | SQLite (ephemeral) | Free |
+| Object storage | local filesystem (ephemeral) | Free |
 
-Keep the AWS budget alarm on, and delete the Postgres server + S3 bucket when you're
-done demoing so nothing bills after the free windows close.
+The durable upgrade (Postgres + S3) may leave free tiers eventually; keep the AWS
+budget alarm on and delete resources when you're done demoing.

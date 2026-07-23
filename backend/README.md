@@ -1,30 +1,24 @@
----
-title: CodeLens API
-emoji: 🔍
-colorFrom: indigo
-colorTo: blue
-sdk: docker
-app_port: 8000
-pinned: false
----
+# CodeLens API (backend)
 
-# CodeLens API
+FastAPI service for [CodeLens](https://github.com/OmPatel1493/CODELENS) — AI-powered
+codebase search & bug localization. Layered `api → services → models`; see the root
+`README.md` for the full picture and `../DEPLOYMENT.md` for deploying.
 
-FastAPI backend for [CodeLens](https://github.com/OmPatel1493/CODELENS) — AI-powered
-codebase search & bug localization (tree-sitter chunking → sentence-transformers
-embeddings → ChromaDB vector search, plus explainable bug localization).
+## Run locally
 
-This Space runs the container defined by `Dockerfile`. Interactive API docs live at
-`/docs`; health check at `/api/health`.
+```bash
+uv sync --extra local                 # deps incl. on-box embeddings (torch)
+uv run uvicorn app.main:app --reload  # http://localhost:8000  (docs at /docs)
+uv run pytest                         # test suite (embeddings mocked — no torch needed)
+```
 
-**Config (Space → Settings → Variables and secrets):**
+## Embeddings backend
 
-| Key | Notes |
-| --- | --- |
-| `JWT_SECRET_KEY` | **secret** — `openssl rand -hex 32` |
-| `CORS_ORIGINS` | JSON array of allowed origins, e.g. `["https://codelens.pages.dev"]` |
-| `DATABASE_URL` | optional — Postgres DSN; unset ⇒ SQLite (ephemeral on Spaces) |
-| `STORAGE_BACKEND` | `local` (default, ephemeral) or `s3` (+ `S3_*` / `AWS_*`) |
+Selected by `EMBEDDING_BACKEND`:
 
-The `sdk: docker` + `app_port: 8000` frontmatter above is what makes Spaces route
-traffic to the port this app's Dockerfile exposes.
+- `local` (default) — sentence-transformers on-box. Free/offline; needs the `local`
+  extra (`uv sync --extra local`, pulls torch).
+- `api` — a hosted embedding API over HTTP (no torch). Used for the slim free deploy;
+  set `HF_API_TOKEN`. Defaults to the HF Inference API for the same model.
+
+See `.env.example` for all settings and `../ENGINEERING_NOTES.md` §12 for the why.
