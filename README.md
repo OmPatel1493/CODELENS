@@ -28,15 +28,18 @@ clean REST API and a modern React interface.
 | Layer          | Choice                                                              |
 | -------------- | ------------------------------------------------------------------- |
 | Backend        | Python 3.12, FastAPI, SQLAlchemy, JWT                               |
-| ML / Search    | sentence-transformers, ChromaDB (embedded), tree-sitter            |
-| Database       | Azure Database for PostgreSQL (SQLite for local development)        |
-| Object storage | AWS S3 — repository archives, logs, reports, exported indexes      |
+| ML / Search    | sentence-transformers (on-box **or** hosted Inference API), ChromaDB (embedded), tree-sitter |
+| Database       | PostgreSQL in production (SQLite for local development)             |
+| Object storage | AWS S3 — repository archives, logs, reports, exported indexes (local FS for dev) |
 | Frontend       | React, TypeScript, Vite, Tailwind CSS, shadcn/ui                   |
-| Infrastructure | Docker, GitHub Actions, Azure App Service (API), Azure Static Web Apps (web) |
+| Infrastructure | Docker, GitHub Actions, Render (API), Cloudflare Pages (web)        |
 
-> **Multi-cloud:** compute, database, and web hosting run on **Azure**; durable
-> object storage uses **AWS S3**. The vector index runs embedded inside the API
-> and is snapshotted to S3, so no separate vector-DB server is required.
+> **Pluggable by design.** Two swap-by-env-var abstractions keep development at
+> **$0/offline** while supporting real cloud in production: embeddings run either
+> **on-box** (sentence-transformers) or via a **hosted Inference API** (slim image,
+> free host), and blobs go to the **local filesystem** or **AWS S3**. The vector
+> index runs embedded inside the API and is snapshotted to storage, so no separate
+> vector-DB server is required.
 
 ## Architecture
 
@@ -65,9 +68,14 @@ Prerequisites: [`uv`](https://docs.astral.sh/uv/) (Python toolchain) and Node 20
 ```bash
 # Backend
 cd backend
-uv sync                                  # create the virtualenv and install deps
+uv sync --extra local                    # venv + deps, incl. on-box embeddings (torch)
 uv run uvicorn app.main:app --reload     # API on http://localhost:8000
 uv run pytest                            # run the test suite
+
+# `--extra local` installs sentence-transformers (torch) so embeddings run on-box
+# (EMBEDDING_BACKEND=local, the default). Omit it for a slim install and set
+# EMBEDDING_BACKEND=api + HF_API_TOKEN to embed via a hosted API instead. Tests
+# need neither (embeddings are mocked).
 
 # Interactive API docs → http://localhost:8000/docs
 ```
@@ -79,14 +87,17 @@ docker compose up --build
 # frontend → http://localhost:5173   |   API → http://localhost:8000/docs
 ```
 
-Runs Postgres + backend + frontend together (mirrors production). First build is
-slow — the backend image bundles the ML stack.
+Runs Postgres + backend + frontend together (mirrors production: slim, torch-free
+backend using `EMBEDDING_BACKEND=api`). Set `HF_API_TOKEN` first — see the note at
+the top of `docker-compose.yml`.
 
 ## Deployment
 
-Free-tier friendly (Azure + AWS S3). See **[DEPLOYMENT.md](DEPLOYMENT.md)** for
-step-by-step instructions and honest cost notes (the ML backend needs a host that
-can run PyTorch — the guide covers the genuinely-free options).
+The live demo runs **$0, no credit card**: backend on **Render** (free Docker web
+service) and frontend on **Cloudflare Pages**. The deploy image is slim because it
+uses `EMBEDDING_BACKEND=api` (embeddings via a hosted Inference API) instead of
+bundling PyTorch. See **[DEPLOYMENT.md](DEPLOYMENT.md)** for step-by-step instructions
+and honest cost notes, including the durable upgrade (Postgres + S3, config-only).
 
 ## Continuous integration
 

@@ -1,11 +1,14 @@
 # Local full-stack run: Postgres + FastAPI backend + React frontend (nginx).
-# Mirrors the production topology (Postgres instead of SQLite). Object storage
-# stays on the local filesystem backend here; production uses AWS S3.
+# Mirrors the production topology: Postgres (not SQLite) and the slim backend
+# image using EMBEDDING_BACKEND=api. Object storage stays local here; prod uses S3.
 #
-#   docker compose up --build
+#   HF_API_TOKEN=hf_xxx docker compose up --build
 #   frontend → http://localhost:5173   |   API → http://localhost:8000/docs
 #
-# Note: the backend image is large (~2 GB) due to the ML stack; first build is slow.
+# Set HF_API_TOKEN (free: huggingface.co/settings/tokens) so embeddings work — the
+# image is intentionally torch-free. To embed on-box instead, run the backend
+# outside Docker with `uv run --extra local uvicorn app.main:app` and set
+# EMBEDDING_BACKEND=local.
 
 services:
   db:
@@ -34,6 +37,8 @@ services:
       JWT_SECRET_KEY: local-dev-secret-change-me-in-production-please
       CORS_ORIGINS: '["http://localhost:5173"]'
       STORAGE_BACKEND: local
+      EMBEDDING_BACKEND: api
+      HF_API_TOKEN: ${HF_API_TOKEN:-}
     ports:
       - "8000:8000"
     volumes:

@@ -14,12 +14,17 @@ dependencies = [
     "boto3>=1.43.51",
     "python-multipart>=0.0.32",
     "httpx>=0.28.1",
-    "sentence-transformers>=5.6.0",
     "chromadb>=1.5.9",
     "tree-sitter>=0.26.0",
     "tree-sitter-language-pack>=1.12.5",
     "psycopg[binary]>=3.3.4",
 ]
+
+[project.optional-dependencies]
+# On-box embeddings (EMBEDDING_BACKEND=local). Pulls torch (~2 GB) — installed
+# for local dev (`uv sync --extra local`) but excluded from the deploy image,
+# which uses EMBEDDING_BACKEND=api instead. See services/embedder.py.
+local = ["sentence-transformers>=5.6.0"]
 
 [dependency-groups]
 # Dev-only tooling. Installed with `uv sync` but excluded from production images.
