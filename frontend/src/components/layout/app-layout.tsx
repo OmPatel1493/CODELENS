@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Search,
   Sparkles,
+  GitPullRequest,
   FolderGit2,
   Bug,
   ScanSearch,
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { to: "/app/repositories", label: "Repositories", icon: FolderGit2 },
   { to: "/app/search", label: "Search", icon: Search },
   { to: "/app/ask", label: "Ask", icon: Sparkles },
+  { to: "/app/review", label: "Code Review", icon: GitPullRequest },
   { to: "/app/bugs", label: "Bug Localization", icon: Bug },
 ];
 

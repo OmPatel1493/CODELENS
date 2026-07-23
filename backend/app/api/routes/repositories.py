@@ -33,11 +33,13 @@ from app.schemas.repository import (
     RepositoryRead,
     RepoStats,
 )
+from app.schemas.review import ReviewRequest, ReviewResponse
 from app.schemas.search import SearchRequest, SearchResponse
 from app.services import (
     answer_service,
     bug_localization_service,
     ingestion_service,
+    review_service,
     search_service,
 )
 
@@ -134,6 +136,35 @@ def ask_repository(
             detail=f"Answer generation failed: {exc}",
         ) from exc
     return AskResponse(query=payload.query, answer=answer, sources=sources)
+
+
+@router.post("/{repo_id}/review", response_model=ReviewResponse)
+def review_diff(
+    repo_id: int, payload: ReviewRequest, db: DbSession, user: CurrentUser
+) -> ReviewResponse:
+    """AI code review: review a diff / GitHub PR against the indexed codebase."""
+    repo = _get_owned_repo(db, repo_id, user)
+    if repo.status is not RepoStatus.ready:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Repository is not indexed yet"
+        )
+    try:
+        summary, comments, sources = review_service.review(
+            db, repo, diff=payload.diff, pr_url=payload.pr_url
+        )
+    except ValueError as exc:  # bad PR URL, empty/oversized diff, PR not found
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
+    except RuntimeError as exc:  # LLM not configured
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
+    except Exception as exc:  # upstream LLM/GitHub failure
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Review failed: {exc}"
+        ) from exc
+    return ReviewResponse(summary=summary, comments=comments, sources=sources)
 
 
 @router.post("/{repo_id}/localize", response_model=BugLocalizeResponse)

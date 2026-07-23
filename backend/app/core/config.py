@@ -104,6 +104,8 @@ class Settings(BaseSettings):
     LLM_TIMEOUT: float = 60.0
     # How many retrieved chunks to feed the model as grounding context.
     RAG_CONTEXT_CHUNKS: int = 6
+    # Reject diffs larger than this many bytes for AI review (keeps the prompt bounded).
+    MAX_DIFF_BYTES: int = 60_000
 
 
 @lru_cache
