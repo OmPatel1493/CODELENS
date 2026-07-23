@@ -1,9 +1,12 @@
 # Deploying CodeLens
 
 The live demo runs **$0 and without a credit card**: the **FastAPI backend on
-Render** (free Docker web service) and the **frontend on Cloudflare Pages**. Data is
+Render** (free Docker web service) and the **frontend on Vercel**. Data is
 ephemeral by default (SQLite + local storage); a durable upgrade (PostgreSQL + AWS S3)
 is **config-only** — no code changes — and covered at the end.
+
+**Live:** frontend [codelens-lilac.vercel.app](https://codelens-lilac.vercel.app) ·
+backend `https://codelens-api-qk3q.onrender.com` (see the URL-suffix note in §1).
 
 > **Why not Hugging Face Spaces?** Earlier versions of this guide used HF Spaces
 > (Docker SDK) as the free ML host. In **early July 2026 HF made Docker Spaces
@@ -23,7 +26,7 @@ is **config-only** — no code changes — and covered at the end.
 - Code pushed to GitHub (CI green).
 - A **free Hugging Face read token** for the embedding API:
   [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) (role: Read).
-- Accounts: GitHub, [Render](https://render.com), [Cloudflare](https://dash.cloudflare.com).
+- Accounts: GitHub, [Render](https://render.com), [Vercel](https://vercel.com).
   (AWS + a Postgres provider only if you want the durable upgrade in §5.)
 
 ## 1. Backend — Render (free Docker web service)
@@ -37,8 +40,11 @@ The repo ships a **`render.yaml` Blueprint** at the root, so most of this is aut
 2. Set the two secrets it asks for (marked `sync: false` in the Blueprint):
    - `HF_API_TOKEN` — your Hugging Face read token.
    - `CORS_ORIGINS` — leave as `["*"]` for now; tighten in §3 once the frontend exists.
-3. Deploy. First build takes a few minutes. Your API is then live at
-   `https://codelens-api.onrender.com` (Render shows the exact URL).
+3. Deploy. First build takes a few minutes. **Note the exact URL Render shows** — the
+   subdomain is global, so if `codelens-api` is taken you get a suffix like
+   `codelens-api-qk3q.onrender.com`. (The plain `codelens-api.onrender.com` will then
+   serve Render's own HTML "Not Found" — a tell that it's Render, not your app, since
+   FastAPI 404s are JSON.) Use whatever URL Render assigns.
 4. Verify: open `https://<your-api>.onrender.com/docs` (Swagger) and
    `GET /api/health` → `{"status":"ok"}`.
 
@@ -49,23 +55,32 @@ The repo ships a **`render.yaml` Blueprint** at the root, so most of this is aut
 *(Alternative hosts that run the **full torch image** unchanged — Google Cloud Run,
 Fly.io — work too, but require a credit card. See ENGINEERING_NOTES §12.)*
 
-## 2. Frontend — Cloudflare Pages (free)
+## 2. Frontend — Vercel (free)
 
-1. [Cloudflare dashboard](https://dash.cloudflare.com) → **Workers & Pages** →
-   **Create** → **Pages** → **Connect to Git** → pick the repo.
-2. Build settings:
-   - Framework preset: **Vite**
-   - **Root directory:** `frontend`
-   - Build command: `npm run build` · Output directory: `dist`
+1. [vercel.com/new](https://vercel.com/new) → **Import** the repo.
+2. Configure:
+   - **Root Directory:** `frontend` (click Edit — this is the key monorepo step)
+   - Framework preset: **Vite** (auto-detected once root is `frontend`);
+     build `npm run build`, output `dist` are auto-filled.
 3. Environment variable: **`VITE_API_URL`** = `https://<your-api>.onrender.com/api`
-   (baked in at build time — the trailing `/api` matters).
-4. Deploy → you get `https://<project>.pages.dev`. Copy it.
+   (uppercase key; **baked in at build time** — the trailing `/api` matters, and any
+   later change needs a **redeploy** to take effect).
+4. Deploy → you get `https://<project>.vercel.app`. Copy it.
+
+> SPA client-routing is handled by `frontend/vercel.json` (`rewrites: /(.*) →
+> /index.html`) so deep links / refreshes don't 404. Vercel does **not** read the
+> Netlify/Cloudflare `_redirects` convention — hence the `vercel.json`.
+>
+> *(Cloudflare Pages was the original plan, but its dashboard now routes new Git
+> projects through the Workers "Builds" flow, which lacks a Root-directory field and
+> defaults to `npx wrangler deploy` — a poor fit for a monorepo static SPA. Netlify
+> also works and does read `_redirects`.)*
 
 ## 3. Wire CORS together
 
 Back in Render → the service → **Environment**, set:
 
-- `CORS_ORIGINS` = `["https://<project>.pages.dev"]`
+- `CORS_ORIGINS` = `["https://<project>.vercel.app"]`
   (**JSON array string** — brackets + quotes required, or the app crashes on boot).
 
 Save; Render redeploys. **CORS is the usual gotcha:** the origin must match exactly,
@@ -78,7 +93,7 @@ with no trailing slash.
 | `EMBEDDING_BACKEND` | `api` (set by the Blueprint) |
 | `HF_API_TOKEN` | free HF read token (embedding API auth) |
 | `JWT_SECRET_KEY` | strong secret (Blueprint auto-generates; or `openssl rand -hex 32`) |
-| `CORS_ORIGINS` | `["https://<your-pages-url>"]` (JSON array) |
+| `CORS_ORIGINS` | `["https://<your-vercel-url>"]` (JSON array) |
 | `ENVIRONMENT` | `production` · `DEBUG` = `false` |
 | `DATABASE_URL` | *(optional)* Postgres DSN — unset ⇒ ephemeral SQLite |
 | `STORAGE_BACKEND` | `local` (ephemeral) or `s3` (+ the `S3_*` / `AWS_*` vars) |
@@ -86,7 +101,7 @@ with no trailing slash.
 ## 5. Verify end to end
 
 - `GET https://<your-api>.onrender.com/api/health` → `{"status":"ok"}`
-- Open the Pages site → register → add a small **public** GitHub repo → wait for
+- Open the Vercel site → register → add a small **public** GitHub repo → wait for
   `ready` → search. If requests are blocked, it's almost always `CORS_ORIGINS`.
 
 > Free Render services **spin down after ~15 min idle** (~30–60 s cold start on the
@@ -116,7 +131,7 @@ DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:5432/codelens?sslmode=requi
 
 | Piece | Host | Cost |
 | --- | --- | --- |
-| Frontend | Cloudflare Pages | Free (forever) |
+| Frontend | Vercel | Free (Hobby) |
 | Backend (slim, API embeddings) | Render free web service | Free (forever; sleeps when idle) |
 | Embeddings | Hugging Face Inference API | Free (rate-limited) |
 | Database | SQLite (ephemeral) | Free |

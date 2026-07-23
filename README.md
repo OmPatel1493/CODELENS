@@ -32,7 +32,7 @@ clean REST API and a modern React interface.
 | Database       | PostgreSQL in production (SQLite for local development)             |
 | Object storage | AWS S3 — repository archives, logs, reports, exported indexes (local FS for dev) |
 | Frontend       | React, TypeScript, Vite, Tailwind CSS, shadcn/ui                   |
-| Infrastructure | Docker, GitHub Actions, Render (API), Cloudflare Pages (web)        |
+| Infrastructure | Docker, GitHub Actions, Render (API), Vercel (web)                  |
 
 > **Pluggable by design.** Two swap-by-env-var abstractions keep development at
 > **$0/offline** while supporting real cloud in production: embeddings run either
@@ -93,11 +93,14 @@ the top of `docker-compose.yml`.
 
 ## Deployment
 
-The live demo runs **$0, no credit card**: backend on **Render** (free Docker web
-service) and frontend on **Cloudflare Pages**. The deploy image is slim because it
-uses `EMBEDDING_BACKEND=api` (embeddings via a hosted Inference API) instead of
-bundling PyTorch. See **[DEPLOYMENT.md](DEPLOYMENT.md)** for step-by-step instructions
-and honest cost notes, including the durable upgrade (Postgres + S3, config-only).
+**Live demo:** [codelens-lilac.vercel.app](https://codelens-lilac.vercel.app)
+*(free tier — the API sleeps when idle, so the first request may take ~30–60 s to wake).*
+
+The live demo runs **$0, no credit card**: frontend on **Vercel**, backend on **Render**
+(free Docker web service). The deploy image is slim because it uses
+`EMBEDDING_BACKEND=api` (embeddings via a hosted Inference API) instead of bundling
+PyTorch. See **[DEPLOYMENT.md](DEPLOYMENT.md)** for step-by-step instructions and honest
+cost notes, including the durable upgrade (Postgres + S3, config-only).
 
 ## Continuous integration
 
