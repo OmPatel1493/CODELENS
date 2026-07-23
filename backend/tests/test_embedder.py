@@ -37,6 +37,8 @@ def test_api_embedder_normalizes_and_sends_batch(monkeypatch):
     captured = {}
 
     class _Resp:
+        status_code = 200
+
         def raise_for_status(self):
             pass
 
@@ -74,6 +76,8 @@ def test_api_embedder_empty_input_skips_call(monkeypatch):
 
 def test_api_embedder_rejects_bad_shape(monkeypatch):
     class _Resp:
+        status_code = 200
+
         def raise_for_status(self):
             pass
 

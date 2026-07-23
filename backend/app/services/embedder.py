@@ -83,28 +83,43 @@ class ApiEmbedder(EmbeddingBackend):
     def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
+        import time
+
         import httpx
 
-        resp = httpx.post(
-            self._url,
-            headers=self._headers,
-            # wait_for_model rides out the API's cold start instead of erroring.
-            json={"inputs": texts, "options": {"wait_for_model": True}},
-            timeout=self._timeout,
-        )
-        resp.raise_for_status()
-        vectors = resp.json()
-        if not isinstance(vectors, list) or (vectors and not isinstance(vectors[0], list)):
-            raise RuntimeError(f"Unexpected embedding API response shape: {type(vectors)}")
-        return [_normalize(v) for v in vectors]
+        # The HF router (TEI-backed) takes {"inputs": [...]} and returns a list of
+        # vectors. A model can 503 briefly while it loads on first hit — retry a few
+        # times with backoff instead of failing the whole indexing job.
+        last_exc: Exception | None = None
+        for attempt in range(4):
+            resp = httpx.post(
+                self._url,
+                headers=self._headers,
+                json={"inputs": texts},
+                timeout=self._timeout,
+            )
+            if resp.status_code == 503:  # model loading — wait and retry
+                last_exc = RuntimeError("embedding API 503 (model loading)")
+                time.sleep(2 * (attempt + 1))
+                continue
+            resp.raise_for_status()
+            vectors = resp.json()
+            if not isinstance(vectors, list) or (vectors and not isinstance(vectors[0], list)):
+                raise RuntimeError(f"Unexpected embedding API response shape: {type(vectors)}")
+            return [_normalize(v) for v in vectors]
+        raise last_exc or RuntimeError("embedding API failed")
 
 
 @lru_cache
 def get_embedder() -> EmbeddingBackend:
     """Return the configured embedding backend (built once per process)."""
     if settings.EMBEDDING_BACKEND == "api":
+        # HF Inference "router" endpoint (the old api-inference.huggingface.co host was
+        # retired). For sentence-transformers models the path must end in
+        # /pipeline/feature-extraction. Override entirely with EMBEDDING_API_URL.
         url = settings.EMBEDDING_API_URL or (
-            f"https://api-inference.huggingface.co/models/{settings.EMBEDDING_MODEL}"
+            "https://router.huggingface.co/hf-inference/models/"
+            f"{settings.EMBEDDING_MODEL}/pipeline/feature-extraction"
         )
         return ApiEmbedder(url, settings.HF_API_TOKEN, settings.EMBEDDING_API_TIMEOUT)
     return LocalEmbedder()
