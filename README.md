@@ -19,6 +19,10 @@ clean REST API and a modern React interface.
   *grounded* in the retrieved code, with inline `[n]` citations back to the exact
   files/symbols it used (retrieval stays the source of truth; the model only
   explains what the code says).
+- **AI code review** — paste a diff or point at a public GitHub PR URL; CodeLens
+  retrieves related code from the indexed repo as context and returns structured,
+  severity-tagged review findings (so the review is informed by the *whole* codebase,
+  not the diff in isolation).
 - **Bug localization** — paste a stack trace or error log and get the most
   likely source files, ranked and explained.
 - **Structural indexing** — files, directories, classes, functions, and imports

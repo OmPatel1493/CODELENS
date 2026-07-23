@@ -37,7 +37,9 @@ class LLMBackend(ABC):
     """Turns a system + user prompt into a completion string."""
 
     @abstractmethod
-    def complete(self, system: str, user: str) -> str: ...
+    def complete(
+        self, system: str, user: str, *, json_mode: bool = False, max_tokens: int = 800
+    ) -> str: ...
 
 
 class OpenAICompatibleLLM(LLMBackend):
@@ -52,23 +54,23 @@ class OpenAICompatibleLLM(LLMBackend):
             "Content-Type": "application/json",
         }
 
-    def complete(self, system: str, user: str) -> str:
+    def complete(
+        self, system: str, user: str, *, json_mode: bool = False, max_tokens: int = 800
+    ) -> str:
         import httpx
 
-        resp = httpx.post(
-            self._url,
-            headers=self._headers,
-            json={
-                "model": self._model,
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
-                "temperature": 0.1,  # low: we want faithful synthesis, not creativity
-                "max_tokens": 800,
-            },
-            timeout=self._timeout,
-        )
+        body = {
+            "model": self._model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            "temperature": 0.1,  # low: we want faithful synthesis, not creativity
+            "max_tokens": max_tokens,
+        }
+        if json_mode:  # ask for a strict JSON object (OpenAI/Groq JSON mode)
+            body["response_format"] = {"type": "json_object"}
+        resp = httpx.post(self._url, headers=self._headers, json=body, timeout=self._timeout)
         resp.raise_for_status()
         data = resp.json()
         return data["choices"][0]["message"]["content"].strip()
@@ -79,7 +81,8 @@ def get_llm() -> LLMBackend:
     """Return the configured LLM backend (built once per process)."""
     if not settings.LLM_API_KEY:
         raise RuntimeError(
-            "RAG is not configured: set LLM_API_KEY (e.g. a free Groq key) to enable /ask."
+            "AI features are not configured: set LLM_API_KEY (e.g. a free Groq key) "
+            "to enable Ask and Code Review."
         )
     return OpenAICompatibleLLM(
         settings.LLM_API_URL, settings.LLM_API_KEY, settings.LLM_MODEL, settings.LLM_TIMEOUT

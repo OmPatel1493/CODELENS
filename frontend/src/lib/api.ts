@@ -207,6 +207,31 @@ export function askRepository(repoId: number, query: string, limit = 6) {
   });
 }
 
+// ── AI code review ───────────────────────────────────────────────
+
+export interface ReviewComment {
+  severity: string;
+  file: string | null;
+  line: number | null;
+  comment: string;
+}
+
+export interface ReviewResponse {
+  summary: string;
+  comments: ReviewComment[];
+  sources: SearchHit[];
+}
+
+export function reviewRepository(
+  repoId: number,
+  input: { diff: string } | { pr_url: string },
+) {
+  return apiFetch<ReviewResponse>(`/repositories/${repoId}/review`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 // ── Bug localization ─────────────────────────────────────────────
 
 export interface ParsedLog {
