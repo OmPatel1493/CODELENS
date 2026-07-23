@@ -93,6 +93,18 @@ class Settings(BaseSettings):
         ".php",
     ]
 
+    # --- RAG answer layer (LLM synthesis over retrieval) ---
+    # An OpenAI-compatible chat-completions endpoint. Default: Groq (free, fast).
+    # Any OpenAI-compatible provider works by changing URL + model + key.
+    LLM_API_URL: str = "https://api.groq.com/openai/v1/chat/completions"
+    LLM_MODEL: str = "llama-3.3-70b-versatile"
+    # API key for the LLM. Blank => the /ask endpoint returns 503 (RAG disabled),
+    # but search and bug-localization still work without it.
+    LLM_API_KEY: str = ""
+    LLM_TIMEOUT: float = 60.0
+    # How many retrieved chunks to feed the model as grounding context.
+    RAG_CONTEXT_CHUNKS: int = 6
+
 
 @lru_cache
 def get_settings() -> Settings:

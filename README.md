@@ -15,6 +15,10 @@ clean REST API and a modern React interface.
 - **Semantic code search** — natural-language queries over a repository, ranked
   by meaning rather than keywords, with syntax-highlighted snippets and confidence
   scores.
+- **AI answers (RAG)** — ask a question and get a concise natural-language answer
+  *grounded* in the retrieved code, with inline `[n]` citations back to the exact
+  files/symbols it used (retrieval stays the source of truth; the model only
+  explains what the code says).
 - **Bug localization** — paste a stack trace or error log and get the most
   likely source files, ranked and explained.
 - **Structural indexing** — files, directories, classes, functions, and imports
@@ -28,7 +32,7 @@ clean REST API and a modern React interface.
 | Layer          | Choice                                                              |
 | -------------- | ------------------------------------------------------------------- |
 | Backend        | Python 3.12, FastAPI, SQLAlchemy, JWT                               |
-| ML / Search    | sentence-transformers (on-box **or** hosted Inference API), ChromaDB (embedded), tree-sitter |
+| ML / Search    | sentence-transformers (on-box **or** hosted Inference API), ChromaDB (embedded), tree-sitter; RAG via any OpenAI-compatible LLM (Groq by default) |
 | Database       | PostgreSQL in production (SQLite for local development)             |
 | Object storage | AWS S3 — repository archives, logs, reports, exported indexes (local FS for dev) |
 | Frontend       | React, TypeScript, Vite, Tailwind CSS, shadcn/ui                   |

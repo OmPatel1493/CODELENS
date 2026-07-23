@@ -192,6 +192,21 @@ export function searchRepository(repoId: number, query: string, limit = 8) {
   });
 }
 
+// ── Ask (RAG answer layer) ───────────────────────────────────────
+
+export interface AskResponse {
+  query: string;
+  answer: string;
+  sources: SearchHit[];
+}
+
+export function askRepository(repoId: number, query: string, limit = 6) {
+  return apiFetch<AskResponse>(`/repositories/${repoId}/ask`, {
+    method: "POST",
+    body: JSON.stringify({ query, limit }),
+  });
+}
+
 // ── Bug localization ─────────────────────────────────────────────
 
 export interface ParsedLog {
