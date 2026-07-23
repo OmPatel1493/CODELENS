@@ -8,6 +8,7 @@ import { RegisterPage } from "@/pages/register";
 import { DashboardPage } from "@/pages/dashboard";
 import { RepositoriesPage } from "@/pages/repositories";
 import { SearchPage } from "@/pages/search";
+import { AskPage } from "@/pages/ask";
 import { BugsPage } from "@/pages/bugs";
 
 /**
@@ -31,6 +32,7 @@ export default function App() {
             <Route index element={<DashboardPage />} />
             <Route path="repositories" element={<RepositoriesPage />} />
             <Route path="search" element={<SearchPage />} />
+            <Route path="ask" element={<AskPage />} />
             <Route path="bugs" element={<BugsPage />} />
           </Route>
         </Route>

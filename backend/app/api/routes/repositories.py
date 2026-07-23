@@ -24,6 +24,7 @@ from app.core.config import settings
 from app.models.code_chunk import CodeChunk
 from app.models.repository import Repository, RepoSource, RepoStatus
 from app.models.search_log import SearchLog
+from app.schemas.answer import AskRequest, AskResponse
 from app.schemas.bug import BugLocalizeRequest, BugLocalizeResponse
 from app.schemas.repository import (
     GithubIngestRequest,
@@ -33,7 +34,12 @@ from app.schemas.repository import (
     RepoStats,
 )
 from app.schemas.search import SearchRequest, SearchResponse
-from app.services import bug_localization_service, ingestion_service, search_service
+from app.services import (
+    answer_service,
+    bug_localization_service,
+    ingestion_service,
+    search_service,
+)
 
 router = APIRouter(prefix="/repositories", tags=["repositories"])
 
@@ -104,6 +110,30 @@ def search_repository(
         )
     results = search_service.search_repository(db, repo, payload.query, payload.limit)
     return SearchResponse(query=payload.query, results=results)
+
+
+@router.post("/{repo_id}/ask", response_model=AskResponse)
+def ask_repository(
+    repo_id: int, payload: AskRequest, db: DbSession, user: CurrentUser
+) -> AskResponse:
+    """RAG: retrieve relevant code, then return a cited natural-language answer."""
+    repo = _get_owned_repo(db, repo_id, user)
+    if repo.status is not RepoStatus.ready:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Repository is not indexed yet"
+        )
+    try:
+        answer, sources = answer_service.answer_question(db, repo, payload.query, payload.limit)
+    except RuntimeError as exc:  # LLM not configured
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
+    except Exception as exc:  # upstream LLM/network failure
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Answer generation failed: {exc}",
+        ) from exc
+    return AskResponse(query=payload.query, answer=answer, sources=sources)
 
 
 @router.post("/{repo_id}/localize", response_model=BugLocalizeResponse)

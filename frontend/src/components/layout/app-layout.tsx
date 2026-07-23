@@ -7,6 +7,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import {
   LayoutDashboard,
   Search,
+  Sparkles,
   FolderGit2,
   Bug,
   ScanSearch,
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/app/repositories", label: "Repositories", icon: FolderGit2 },
   { to: "/app/search", label: "Search", icon: Search },
+  { to: "/app/ask", label: "Ask", icon: Sparkles },
   { to: "/app/bugs", label: "Bug Localization", icon: Bug },
 ];
 

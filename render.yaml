@@ -19,6 +19,10 @@ services:
       # Free HF read token (huggingface.co/settings/tokens) — set in dashboard.
       - key: HF_API_TOKEN
         sync: false
+      # Free Groq API key (console.groq.com/keys) for the RAG /ask endpoint — set in
+      # dashboard. Leave unset to ship search-only (ask returns 503).
+      - key: LLM_API_KEY
+        sync: false
       # JSON array of allowed browser origins, e.g. ["https://codelens.pages.dev"].
       - key: CORS_ORIGINS
         sync: false
