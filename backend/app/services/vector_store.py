@@ -28,6 +28,11 @@ def get_client():
     return _get_client(settings.CHROMA_DIR)
 
 
+# ChromaDB rejects a single add/upsert larger than its internal max batch size
+# (~5.4k). We chunk upserts below that so large repos index without error.
+_MAX_UPSERT_BATCH = 5000
+
+
 def _collection_name(repository_id: int) -> str:
     return f"repo_{repository_id}"
 
@@ -49,9 +54,16 @@ def add_chunks(
 ) -> None:
     if not ids:
         return
-    _collection(repository_id).upsert(
-        ids=ids, embeddings=embeddings, documents=documents, metadatas=metadatas
-    )
+    collection = _collection(repository_id)
+    # Chunk the upsert so a large repo can't exceed Chroma's max batch size.
+    for start in range(0, len(ids), _MAX_UPSERT_BATCH):
+        end = start + _MAX_UPSERT_BATCH
+        collection.upsert(
+            ids=ids[start:end],
+            embeddings=embeddings[start:end],
+            documents=documents[start:end],
+            metadatas=metadatas[start:end],
+        )
 
 
 def query(
