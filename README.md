@@ -23,6 +23,12 @@ clean REST API and a modern React interface.
   retrieves related code from the indexed repo as context and returns structured,
   severity-tagged review findings (so the review is informed by the *whole* codebase,
   not the diff in isolation).
+- **Dependency graph** — an interactive, force-directed map of intra-repo imports
+  (which file depends on which), parsed straight from the source; hubs are sized by
+  how many files import them.
+- **Retrieval evaluation** — a hand-labeled benchmark scored against the live
+  retriever, reporting **Recall@k, MRR, and MAP** with a per-query breakdown — so
+  search quality is measured, not assumed.
 - **Bug localization** — paste a stack trace or error log and get the most
   likely source files, ranked and explained.
 - **Structural indexing** — files, directories, classes, functions, and imports
@@ -53,21 +59,24 @@ clean REST API and a modern React interface.
 
 ```mermaid
 flowchart TD
-    U([Developer]) -->|browser| FE["React + Vite<br/>(Azure Static Web Apps)"]
-    FE -->|REST / JSON| API["FastAPI backend<br/>api → services → models<br/>(Azure App Service)"]
-    GH[(GitHub repo)] -->|clone / upload| API
-    API -->|metadata| PG[("Azure PostgreSQL<br/>users · repos · chunks")]
+    U([Developer]) -->|browser| FE["React + Vite SPA<br/>(Vercel)"]
+    FE -->|REST / JSON + JWT| API["FastAPI backend<br/>api → services → models<br/>(Render, Docker)"]
+    GH[(GitHub repo)] -->|clone / PR diff| API
+    API -->|users · repos · chunks| DB[("PostgreSQL / SQLite")]
     API -->|vectors| CH[("ChromaDB<br/>embedded index")]
-    API -->|blobs| S3[("AWS S3<br/>archives · logs · reports · snapshots")]
-    CH -. index snapshot .-> S3
+    API -->|archives / snapshots| ST[("Storage<br/>local FS or AWS S3")]
+    API -->|embed text| EMB["Embedding API<br/>(HF Inference) · or on-box"]
+    API -->|answers / review| LLM["LLM<br/>(Groq, OpenAI-compatible)"]
 ```
 
 A layered backend keeps concerns separate: routes handle HTTP, services hold
-business logic, models own persistence. Each store is used for what it does best:
-relational metadata in **Azure PostgreSQL**, semantic vectors in an **embedded
-ChromaDB** index, and durable blobs (repository archives, logs, reports, and
-exported index snapshots) in **AWS S3**. Compute and web hosting run on Azure;
-object storage on AWS — a deliberate multi-cloud split.
+business logic, models own persistence. Each dependency is pluggable by env var so
+development runs at **$0/offline** and production swaps in cloud pieces with no code
+change: relational metadata in **SQLite or PostgreSQL** (`DATABASE_URL`), semantic
+vectors in an **embedded ChromaDB** index, blobs on the **local filesystem or AWS S3**
+(`STORAGE_BACKEND`), embeddings **on-box or via a hosted API** (`EMBEDDING_BACKEND`),
+and RAG/review through **any OpenAI-compatible LLM** (`LLM_API_URL`, Groq by default).
+The live demo runs frontend on **Vercel** and backend on **Render**.
 
 ## Local development
 
