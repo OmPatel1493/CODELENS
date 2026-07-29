@@ -232,6 +232,62 @@ export function reviewRepository(
   });
 }
 
+// ── Retrieval evaluation ─────────────────────────────────────────
+
+export interface EvalSummary {
+  queries: number;
+  recall_at_1: number;
+  recall_at_5: number;
+  mrr: number;
+  map: number;
+}
+
+export interface EvalCase {
+  query: string;
+  expected: string[];
+  found_rank: number;
+  recall_at_1: number;
+  recall_at_5: number;
+  reciprocal_rank: number;
+  average_precision: number;
+}
+
+export interface EvalResponse {
+  repo: string;
+  summary: EvalSummary;
+  per_query: EvalCase[];
+}
+
+export function evaluateRepository(repoId: number) {
+  return apiFetch<EvalResponse>(`/repositories/${repoId}/evaluate`, {
+    method: "POST",
+  });
+}
+
+// ── Dependency graph ─────────────────────────────────────────────
+
+export interface GraphNode {
+  id: string;
+  label: string;
+  group: string;
+  in_degree: number;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+}
+
+export interface GraphResponse {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  truncated: boolean;
+}
+
+export function getDependencyGraph(repoId: number) {
+  return apiFetch<GraphResponse>(`/repositories/${repoId}/graph`);
+}
+
 // ── Bug localization ─────────────────────────────────────────────
 
 export interface ParsedLog {

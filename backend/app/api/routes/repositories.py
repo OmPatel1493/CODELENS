@@ -21,11 +21,14 @@ from sqlalchemy import func, select
 
 from app.api.deps import CurrentUser, DbSession, StorageDep
 from app.core.config import settings
+from app.eval import benchmark
 from app.models.code_chunk import CodeChunk
 from app.models.repository import Repository, RepoSource, RepoStatus
 from app.models.search_log import SearchLog
 from app.schemas.answer import AskRequest, AskResponse
 from app.schemas.bug import BugLocalizeRequest, BugLocalizeResponse
+from app.schemas.evaluation import EvalResponse
+from app.schemas.graph import GraphResponse
 from app.schemas.repository import (
     GithubIngestRequest,
     RecentSearch,
@@ -38,6 +41,7 @@ from app.schemas.search import SearchRequest, SearchResponse
 from app.services import (
     answer_service,
     bug_localization_service,
+    graph_service,
     ingestion_service,
     review_service,
     search_service,
@@ -165,6 +169,40 @@ def review_diff(
             status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Review failed: {exc}"
         ) from exc
     return ReviewResponse(summary=summary, comments=comments, sources=sources)
+
+
+@router.post("/{repo_id}/evaluate", response_model=EvalResponse)
+def evaluate_retrieval(repo_id: int, db: DbSession, user: CurrentUser) -> EvalResponse:
+    """Run the labeled retrieval benchmark for this repo → Recall@k / MRR / MAP."""
+    repo = _get_owned_repo(db, repo_id, user)
+    if repo.status is not RepoStatus.ready:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Repository is not indexed yet"
+        )
+    try:
+        return EvalResponse(**benchmark.run_benchmark(db, repo))
+    except ValueError as exc:  # no benchmark defined for this repo
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
+
+
+@router.get("/{repo_id}/graph", response_model=GraphResponse)
+def dependency_graph(
+    repo_id: int, db: DbSession, user: CurrentUser, storage: StorageDep
+) -> GraphResponse:
+    """Build the intra-repo import dependency graph from the archived source."""
+    repo = _get_owned_repo(db, repo_id, user)
+    if repo.status is not RepoStatus.ready:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Repository is not indexed yet"
+        )
+    try:
+        return GraphResponse(**graph_service.build_graph(storage, repo))
+    except ValueError as exc:  # archive unavailable
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
 
 
 @router.post("/{repo_id}/localize", response_model=BugLocalizeResponse)

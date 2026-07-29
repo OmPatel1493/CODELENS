@@ -10,6 +10,8 @@ import { RepositoriesPage } from "@/pages/repositories";
 import { SearchPage } from "@/pages/search";
 import { AskPage } from "@/pages/ask";
 import { ReviewPage } from "@/pages/review";
+import { EvaluationPage } from "@/pages/evaluation";
+import { DependenciesPage } from "@/pages/dependencies";
 import { BugsPage } from "@/pages/bugs";
 
 /**
@@ -35,6 +37,8 @@ export default function App() {
             <Route path="search" element={<SearchPage />} />
             <Route path="ask" element={<AskPage />} />
             <Route path="review" element={<ReviewPage />} />
+            <Route path="evaluation" element={<EvaluationPage />} />
+            <Route path="dependencies" element={<DependenciesPage />} />
             <Route path="bugs" element={<BugsPage />} />
           </Route>
         </Route>

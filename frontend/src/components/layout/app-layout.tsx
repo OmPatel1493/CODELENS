@@ -11,6 +11,8 @@ import {
   GitPullRequest,
   FolderGit2,
   Bug,
+  BarChart3,
+  Network,
   ScanSearch,
   LogOut,
 } from "lucide-react";
@@ -28,6 +30,8 @@ const NAV_ITEMS = [
   { to: "/app/ask", label: "Ask", icon: Sparkles },
   { to: "/app/review", label: "Code Review", icon: GitPullRequest },
   { to: "/app/bugs", label: "Bug Localization", icon: Bug },
+  { to: "/app/dependencies", label: "Dependencies", icon: Network },
+  { to: "/app/evaluation", label: "Evaluation", icon: BarChart3 },
 ];
 
 export function AppLayout() {
