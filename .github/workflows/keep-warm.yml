@@ -1,0 +1,28 @@
+name: Keep backend warm
+
+# Render's free web service sleeps after ~15 min idle, adding a 30-60s cold start
+# to the next request (e.g. the first login). This pings the health endpoint every
+# ~10 min so the instance stays awake.
+#
+# Notes:
+# - Scheduled workflows run only on the DEFAULT branch, so this activates once merged
+#   to main (it won't run from a feature branch).
+# - GitHub may delay scheduled runs under load; ~10 min stays comfortably under the
+#   15-min sleep window even if a run slips.
+# - Keeping the service awake ~24/7 uses most of Render's 750 free instance-hours/month
+#   (fine for a single free service). Widen the cron (e.g. business hours only) to save.
+# - Update the URL below if the Render service URL changes.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /api/health
+        run: |
+          curl -sSf --max-time 90 --retry 2 --retry-delay 15 \
+            https://codelens-api-qk3q.onrender.com/api/health
