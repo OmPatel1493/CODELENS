@@ -28,6 +28,10 @@ services:
         sync: false
       - key: JWT_SECRET_KEY
         generateValue: true
+      # Lower bcrypt cost on the 0.1-vCPU free instance so login/signup stay fast
+      # (~4x faster than the default 12). Still the OWASP-recommended minimum.
+      - key: BCRYPT_ROUNDS
+        value: "10"
       - key: ENVIRONMENT
         value: production
       - key: DEBUG

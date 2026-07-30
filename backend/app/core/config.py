@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = "dev-insecure-secret-change-me-in-production-please"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
+    # bcrypt work factor (cost). Each +1 doubles the hashing time. 12 is a strong
+    # default; on a CPU-constrained free host (Render's 0.1 vCPU) 10 keeps login
+    # snappy while staying at the OWASP-recommended minimum. Tune to the hardware.
+    BCRYPT_ROUNDS: int = 12
 
     # --- Storage (repository archives, logs, reports, index snapshots) ---
     # "local" = filesystem (free, offline, the dev default).

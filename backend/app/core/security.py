@@ -13,8 +13,9 @@ from pwdlib.hashers.bcrypt import BcryptHasher
 from app.core.config import settings
 
 # bcrypt hasher. `.hash()` generates a per-password salt; `.verify()` is
-# constant-time. Never store or log the plaintext password.
-_password_hash = PasswordHash((BcryptHasher(),))
+# constant-time. Never store or log the plaintext password. The work factor
+# (rounds) is env-tunable — lower it on CPU-constrained hosts so auth stays fast.
+_password_hash = PasswordHash((BcryptHasher(rounds=settings.BCRYPT_ROUNDS),))
 
 
 def hash_password(plain_password: str) -> str:
