@@ -302,6 +302,20 @@ async def ingest_upload(
     return repo
 
 
+@router.post("/{repo_id}/reindex", response_model=RepositoryRead)
+def reindex_repository(
+    repo_id: int, db: DbSession, user: CurrentUser, background: BackgroundTasks
+) -> Repository:
+    """Rebuild a repo's index (re-download/re-parse) — restores it after an eviction."""
+    repo = _get_owned_repo(db, repo_id, user)
+    repo.status = RepoStatus.pending
+    repo.error_message = None
+    db.commit()
+    db.refresh(repo)
+    background.add_task(ingestion_service.reindex_repository, repo.id)
+    return repo
+
+
 @router.delete("/{repo_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_repository(repo_id: int, db: DbSession, user: CurrentUser, storage: StorageDep) -> None:
     repo = _get_owned_repo(db, repo_id, user)

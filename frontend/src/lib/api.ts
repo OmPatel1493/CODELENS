@@ -157,6 +157,10 @@ export function deleteRepository(id: number) {
   return apiFetch<void>(`/repositories/${id}`, { method: "DELETE" });
 }
 
+export function reindexRepository(id: number) {
+  return apiFetch<Repository>(`/repositories/${id}/reindex`, { method: "POST" });
+}
+
 export interface RepoStats {
   repositories: number;
   indexed_chunks: number;

@@ -101,6 +101,45 @@ def archive_repository(
     db.commit()
 
 
+def reindex_repository(repo_id: int) -> None:
+    """Re-run ingestion for an existing repo: clear old chunks + vectors, then rebuild.
+
+    Used to restore a repo after the ephemeral disk is wiped (free-tier restart), or to
+    pick up upstream changes. GitHub repos re-download from `source_url`; uploads reuse
+    the archive still in storage (or fail clearly if it's been evicted).
+    """
+    from sqlalchemy import delete as sa_delete
+
+    from app.models.code_chunk import CodeChunk
+    from app.services import vector_store
+
+    db = SessionLocal()
+    upload_bytes: bytes | None = None
+    try:
+        repo = db.get(Repository, repo_id)
+        if repo is None:
+            return
+        # Clear prior data so re-indexing can't duplicate chunks/vectors.
+        db.execute(sa_delete(CodeChunk).where(CodeChunk.repository_id == repo_id))
+        db.commit()
+        vector_store.delete_repository_index(repo_id)
+
+        if repo.source is RepoSource.upload:
+            storage = get_storage()
+            if repo.archive_key and storage.exists(repo.archive_key):
+                upload_bytes = storage.load_bytes(repo.archive_key)
+            else:
+                repo.status = RepoStatus.failed
+                repo.error_message = "Original upload is no longer available — re-upload the .zip."
+                db.commit()
+                return
+    finally:
+        db.close()
+
+    # Re-run the normal pipeline (github re-downloads; upload uses the reloaded bytes).
+    run_ingestion(repo_id, upload_bytes)
+
+
 def run_ingestion(repo_id: int, upload_bytes: bytes | None = None) -> None:
     """Background entry point: archive + count + finalize status.
 

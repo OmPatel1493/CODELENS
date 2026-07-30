@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FolderGit2, GitBranch, Trash2, Upload, Loader2 } from "lucide-react";
+import { FolderGit2, GitBranch, Trash2, Upload, Loader2, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import {
   ApiError,
   deleteRepository,
+  reindexRepository,
   getRepositoryAnalytics,
   ingestGithubRepo,
   listRepositories,
@@ -189,6 +190,11 @@ function RepoRow({ repo }: { repo: Repository }) {
     mutationFn: () => deleteRepository(repo.id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["repositories"] }),
   });
+  const reindex = useMutation({
+    mutationFn: () => reindexRepository(repo.id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["repositories"] }),
+  });
+  const processing = repo.status === "pending" || repo.status === "indexing";
 
   return (
     <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
@@ -211,15 +217,27 @@ function RepoRow({ repo }: { repo: Repository }) {
         </p>
         {repo.status === "ready" && <RepoAnalyticsLine repoId={repo.id} />}
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label={`Delete ${repo.name}`}
-        onClick={() => del.mutate()}
-        disabled={del.isPending}
-      >
-        <Trash2 className="size-4" />
-      </Button>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={`Re-index ${repo.name}`}
+          title="Re-index (rebuild search index & dependency graph)"
+          onClick={() => reindex.mutate()}
+          disabled={reindex.isPending || processing}
+        >
+          <RefreshCw className={cn("size-4", (reindex.isPending || processing) && "animate-spin")} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={`Delete ${repo.name}`}
+          onClick={() => del.mutate()}
+          disabled={del.isPending}
+        >
+          <Trash2 className="size-4" />
+        </Button>
+      </div>
     </div>
   );
 }
