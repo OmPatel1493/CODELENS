@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError, getDependencyGraph, listRepositories, type GraphNode } from "@/lib/api";
 
 const W = 720;
@@ -180,8 +181,11 @@ export function DependenciesPage() {
           </Select>
 
           {graph.isLoading && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> Building dependency graph…
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> Building dependency graph…
+              </div>
+              <Skeleton className="h-[420px] w-full rounded-lg" />
             </div>
           )}
 

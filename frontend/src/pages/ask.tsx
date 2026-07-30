@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CodeBlock } from "@/components/code-block";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ApiError,
   askRepository,
@@ -157,9 +158,23 @@ export function AskPage() {
           )}
 
           {ask.isPending && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Retrieving relevant code and composing an answer…
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                Retrieving relevant code and composing an answer…
+              </div>
+              <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-11/12" />
+                <Skeleton className="h-3 w-4/5" />
+              </div>
+              {[0, 1].map((i) => (
+                <div key={i} className="space-y-3 rounded-lg border p-4">
+                  <Skeleton className="h-4 w-52" />
+                  <Skeleton className="h-24 w-full" />
+                </div>
+              ))}
             </div>
           )}
 

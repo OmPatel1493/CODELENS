@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
   ApiError,
@@ -248,7 +249,16 @@ export function RepositoriesPage() {
       <AddRepoForm />
 
       <div className="space-y-3">
-        {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+        {isLoading &&
+          [0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+              <Skeleton className="size-8" />
+            </div>
+          ))}
         {isError && (
           <p className="text-sm text-destructive">Couldn’t load repositories.</p>
         )}

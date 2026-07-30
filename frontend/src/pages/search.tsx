@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CodeBlock } from "@/components/code-block";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
   ApiError,
@@ -154,6 +155,17 @@ export function SearchPage() {
               </button>
             ))}
           </div>
+
+          {search.isPending && (
+            <div className="space-y-4">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="space-y-3 rounded-lg border p-4">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-20 w-full" />
+                </div>
+              ))}
+            </div>
+          )}
 
           {search.isError && (
             <p role="alert" className="text-sm text-destructive">

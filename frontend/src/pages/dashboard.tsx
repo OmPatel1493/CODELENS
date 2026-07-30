@@ -10,10 +10,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getRepositoryStats } from "@/lib/api";
 
 export function DashboardPage() {
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading } = useQuery({
     queryKey: ["repository-stats"],
     queryFn: getRepositoryStats,
   });
@@ -41,7 +42,11 @@ export function DashboardPage() {
               <Icon className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <CardTitle className="text-3xl">{value}</CardTitle>
+              {isLoading ? (
+                <Skeleton className="h-9 w-14" />
+              ) : (
+                <CardTitle className="text-3xl">{value}</CardTitle>
+              )}
             </CardContent>
           </Card>
         ))}

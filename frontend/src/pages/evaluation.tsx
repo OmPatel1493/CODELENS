@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ApiError,
   evaluateRepository,
@@ -120,6 +121,24 @@ export function EvaluationPage() {
             A labeled query set ships for <span className="font-mono">itsdangerous</span> —
             index that repo to benchmark it. (More repos can be added to the benchmark.)
           </p>
+
+          {evalRun.isPending && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="space-y-2 rounded-lg border p-4">
+                    <Skeleton className="h-8 w-16" />
+                    <Skeleton className="h-3 w-14" />
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-3 rounded-lg border p-4">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-4 w-full" />
+                ))}
+              </div>
+            </div>
+          )}
 
           {evalRun.isError && (
             <p role="alert" className="text-sm text-destructive">
