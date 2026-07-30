@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CodeBlock } from "@/components/code-block";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
   ApiError,
@@ -209,9 +210,22 @@ export function ReviewPage() {
           )}
 
           {review.isPending && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Fetching the diff, retrieving related code, and reviewing…
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                Fetching the diff, retrieving related code, and reviewing…
+              </div>
+              <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-3/4" />
+              </div>
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="space-y-2 rounded-lg border p-4">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-5/6" />
+                </div>
+              ))}
             </div>
           )}
 

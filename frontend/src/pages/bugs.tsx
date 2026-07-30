@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CodeBlock } from "@/components/code-block";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
   ApiError,
@@ -140,6 +141,17 @@ export function BugsPage() {
               Localize bug
             </Button>
           </form>
+
+          {localize.isPending && (
+            <div className="space-y-4">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="space-y-3 rounded-lg border p-4">
+                  <Skeleton className="h-4 w-56" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ))}
+            </div>
+          )}
 
           {localize.isError && (
             <p role="alert" className="text-sm text-destructive">
