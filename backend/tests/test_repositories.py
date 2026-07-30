@@ -150,6 +150,27 @@ def test_list_get_and_delete(client: TestClient, monkeypatch):
     assert client.get(f"/api/repositories/{created['id']}", headers=headers).status_code == 404
 
 
+def test_reindex_sets_pending_and_schedules(client: TestClient, monkeypatch):
+    monkeypatch.setattr(ingestion_service, "run_ingestion", lambda *a, **k: None)
+    called = {}
+    monkeypatch.setattr(
+        ingestion_service, "reindex_repository", lambda rid: called.setdefault("rid", rid)
+    )
+    headers = _auth_headers(client)
+    created = client.post(
+        "/api/repositories", json={"url": "https://github.com/pallets/flask"}, headers=headers
+    ).json()
+
+    resp = client.post(f"/api/repositories/{created['id']}/reindex", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "pending"
+    assert called["rid"] == created["id"]  # background re-index was scheduled
+
+
+def test_reindex_requires_auth(client: TestClient):
+    assert client.post("/api/repositories/1/reindex").status_code == 401
+
+
 def test_list_pagination(client: TestClient, monkeypatch):
     monkeypatch.setattr(ingestion_service, "run_ingestion", lambda *a, **k: None)
     headers = _auth_headers(client)

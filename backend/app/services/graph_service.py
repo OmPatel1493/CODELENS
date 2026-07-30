@@ -103,7 +103,10 @@ def _resolve_js(spec: str, cur_path: str, js_files: set[str]) -> str | None:
 def build_graph(storage: StorageBackend, repo: Repository) -> dict:
     """Return {nodes, edges, truncated} describing intra-repo import dependencies."""
     if not repo.archive_key or not storage.exists(repo.archive_key):
-        raise ValueError("Source archive unavailable — re-index the repository to build its graph.")
+        raise ValueError(
+            "Source archive unavailable (the free-tier disk resets on restart). "
+            "Click Re-index on the Repositories page to rebuild it."
+        )
 
     ext = _archive_ext(repo)
     data = storage.load_bytes(repo.archive_key)
