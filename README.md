@@ -19,6 +19,10 @@ clean REST API and a modern React interface.
   *grounded* in the retrieved code, with inline `[n]` citations back to the exact
   files/symbols it used (retrieval stays the source of truth; the model only
   explains what the code says).
+- **Plain-English explainer** — for *non-technical* readers: explain a whole project
+  or a single file as a jargon-free document (summary → plain sections → a glossary
+  that defines any unavoidable term), with the raw code hidden. Turns a codebase into
+  something a manager or beginner can understand.
 - **AI code review** — paste a diff or point at a public GitHub PR URL; CodeLens
   retrieves related code from the indexed repo as context and returns structured,
   severity-tagged review findings (so the review is informed by the *whole* codebase,

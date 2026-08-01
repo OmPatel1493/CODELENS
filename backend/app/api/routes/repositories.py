@@ -28,6 +28,7 @@ from app.models.search_log import SearchLog
 from app.schemas.answer import AskRequest, AskResponse
 from app.schemas.bug import BugLocalizeRequest, BugLocalizeResponse
 from app.schemas.evaluation import EvalResponse
+from app.schemas.explain import ExplainRequest, ExplainResponse
 from app.schemas.graph import GraphResponse
 from app.schemas.repository import (
     GithubIngestRequest,
@@ -41,6 +42,7 @@ from app.schemas.search import SearchRequest, SearchResponse
 from app.services import (
     answer_service,
     bug_localization_service,
+    explain_service,
     graph_service,
     ingestion_service,
     review_service,
@@ -184,6 +186,46 @@ def evaluate_retrieval(repo_id: int, db: DbSession, user: CurrentUser) -> EvalRe
     except ValueError as exc:  # no benchmark defined for this repo
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
+
+
+@router.get("/{repo_id}/files", response_model=list[str])
+def list_repo_files(repo_id: int, db: DbSession, user: CurrentUser) -> list[str]:
+    """Distinct indexed file paths (for the Explain file picker)."""
+    repo = _get_owned_repo(db, repo_id, user)
+    return list(
+        db.scalars(
+            select(CodeChunk.file_path)
+            .where(CodeChunk.repository_id == repo.id)
+            .distinct()
+            .order_by(CodeChunk.file_path)
+        )
+    )
+
+
+@router.post("/{repo_id}/explain", response_model=ExplainResponse)
+def explain_repository(
+    repo_id: int, payload: ExplainRequest, db: DbSession, user: CurrentUser
+) -> ExplainResponse:
+    """Plain-English explanation of the repo (or one file) for a non-technical reader."""
+    repo = _get_owned_repo(db, repo_id, user)
+    if repo.status is not RepoStatus.ready:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Repository is not indexed yet"
+        )
+    try:
+        return ExplainResponse(**explain_service.explain(db, repo, payload.scope, payload.file))
+    except ValueError as exc:  # no code / bad file
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
+    except RuntimeError as exc:  # LLM not configured
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
+    except Exception as exc:  # upstream LLM failure
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Explanation failed: {exc}"
         ) from exc
 
 

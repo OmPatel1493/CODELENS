@@ -292,6 +292,40 @@ export function getDependencyGraph(repoId: number) {
   return apiFetch<GraphResponse>(`/repositories/${repoId}/graph`);
 }
 
+// ── Explain (plain-English, for non-technical readers) ───────────
+
+export interface ExplainSection {
+  heading: string;
+  body: string;
+}
+
+export interface GlossaryItem {
+  term: string;
+  definition: string;
+}
+
+export interface ExplainResponse {
+  scope: string;
+  title: string;
+  summary: string;
+  sections: ExplainSection[];
+  glossary: GlossaryItem[];
+}
+
+export function listRepoFiles(repoId: number) {
+  return apiFetch<string[]>(`/repositories/${repoId}/files`);
+}
+
+export function explainRepository(
+  repoId: number,
+  input: { scope: "repo" } | { scope: "file"; file: string },
+) {
+  return apiFetch<ExplainResponse>(`/repositories/${repoId}/explain`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 // ── Bug localization ─────────────────────────────────────────────
 
 export interface ParsedLog {
