@@ -9,6 +9,7 @@ import { DashboardPage } from "@/pages/dashboard";
 import { RepositoriesPage } from "@/pages/repositories";
 import { SearchPage } from "@/pages/search";
 import { AskPage } from "@/pages/ask";
+import { ExplainPage } from "@/pages/explain";
 import { ReviewPage } from "@/pages/review";
 import { EvaluationPage } from "@/pages/evaluation";
 import { DependenciesPage } from "@/pages/dependencies";
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="repositories" element={<RepositoriesPage />} />
             <Route path="search" element={<SearchPage />} />
             <Route path="ask" element={<AskPage />} />
+            <Route path="explain" element={<ExplainPage />} />
             <Route path="review" element={<ReviewPage />} />
             <Route path="evaluation" element={<EvaluationPage />} />
             <Route path="dependencies" element={<DependenciesPage />} />
