@@ -101,7 +101,11 @@ class Settings(BaseSettings):
     # An OpenAI-compatible chat-completions endpoint. Default: Groq (free, fast).
     # Any OpenAI-compatible provider works by changing URL + model + key.
     LLM_API_URL: str = "https://api.groq.com/openai/v1/chat/completions"
-    LLM_MODEL: str = "llama-3.3-70b-versatile"
+    # NOTE: Groq retires model ids on a rolling basis; a 404 from the endpoint
+    # means this id is gone. Confirm a live id via GET /openai/v1/models and
+    # override with the LLM_MODEL env var. `llama-3.1-8b-instant` has been the
+    # longest-lived free Groq model; `llama-3.3-70b-versatile` (now 404) was retired.
+    LLM_MODEL: str = "llama-3.1-8b-instant"
     # API key for the LLM. Blank => the /ask endpoint returns 503 (RAG disabled),
     # but search and bug-localization still work without it.
     LLM_API_KEY: str = ""
