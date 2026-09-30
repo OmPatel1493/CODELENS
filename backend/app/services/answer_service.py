@@ -71,7 +71,18 @@ class OpenAICompatibleLLM(LLMBackend):
         if json_mode:  # ask for a strict JSON object (OpenAI/Groq JSON mode)
             body["response_format"] = {"type": "json_object"}
         resp = httpx.post(self._url, headers=self._headers, json=body, timeout=self._timeout)
-        resp.raise_for_status()
+        if resp.status_code >= 400:
+            # Surface the provider's own error body — a bare 404 from an
+            # OpenAI-compatible endpoint almost always means the model id is
+            # unknown/decommissioned, which the JSON body spells out.
+            detail = resp.text
+            if resp.status_code == 404:
+                detail = (
+                    f"model '{self._model}' was rejected (404). It may be "
+                    f"decommissioned — check the provider's current model list and "
+                    f"update LLM_MODEL. Provider said: {resp.text}"
+                )
+            raise RuntimeError(f"LLM request failed [{resp.status_code}]: {detail}")
         data = resp.json()
         return data["choices"][0]["message"]["content"].strip()
 
